@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"context"
+	"fmt"
 	"github.com/gqlc/graphql/ast"
 	"io"
 )
@@ -37,3 +38,17 @@ func WithOutput(ctx context.Context, w io.Writer) context.Context {
 func Output(ctx context.Context) io.Writer {
 	return ctx.Value(genOut).(io.Writer)
 }
+
+// Error represents an error from a generator.
+type Error struct {
+	// DocName is the document being worked on when error was encountered.
+	DocName string
+
+	// GenName is the generator name which encountered a problem.
+	GenName string
+
+	// Msg is any message the generator wants to provide back to the caller.
+	Msg string
+}
+
+func (e Error) Error() string { return fmt.Sprintf("compiler: error occurred in %s:%s %s", e.GenName, e.DocName, e.Msg) }
