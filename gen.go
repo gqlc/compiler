@@ -26,17 +26,17 @@ type GenCtx struct {
 	Out io.Writer
 }
 
-const genOut = "output"
+const genCtx = "genCtx"
 
-// WithOutput returns a prepared context.Context with the given
-// output source.
-func WithOutput(ctx context.Context, w io.Writer) context.Context {
-	return context.WithValue(ctx, genOut, w)
+// WithContext returns a prepared context.Context
+// with the given generator context.
+func WithContext(ctx context.Context, gCtx GenCtx) context.Context {
+	return context.WithValue(ctx, genCtx, gCtx)
 }
 
-// Output returns the output source for the generator to use.
-func Output(ctx context.Context) io.Writer {
-	return ctx.Value(genOut).(io.Writer)
+// Context returns the generator context.
+func Context(ctx context.Context) GenCtx {
+	return ctx.Value(genCtx).(GenCtx)
 }
 
 // Error represents an error from a generator.
