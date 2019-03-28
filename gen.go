@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/gqlc/graphql/ast"
-	"io"
+	"os"
+	"path/filepath"
 )
 
 // CodeGenerator provides a simple API for creating a code generator for
@@ -18,13 +19,19 @@ type CodeGenerator interface {
 	GenerateAll(ctx context.Context, docs []*ast.Document, opts string) error
 }
 
-// GenCtx represents request scoped data
-// for each CodeGenerator.Generate(All) call.
-type GenCtx struct {
-	// Out is where the generator should output
-	// all generated text.
-	Out io.Writer
+// GeneratorContext represents the directory to which
+// the CodeGenerator is to write and other information
+// about the context in which the Generator runs.
+type GeneratorContext struct {
+	// Dir is the root directory where the generator
+	// will be writing to. This is prepended to all
+	// opened files.
+	//
+	Dir string
 }
+
+// Open opens a file in the GeneratorContext (i.e. directory).
+func (ctx GeneratorContext) Open(filename string) (*os.File, error) { return os.Open(filepath.Join(ctx.Dir, filename)) }
 
 const genCtx = "genCtx"
 
