@@ -1,7 +1,6 @@
-github.com/Zaba505/gqlc v0.0.0-20181218045653-e0823b39ef15 h1:KXaXjNmxCSPZvp8ZJmYCB7r/v1nm9FYLE1EfRSGd9xQ=
-github.com/Zaba505/gqlc v0.0.0-20181218045653-e0823b39ef15/go.mod h1:tLekfHRfRCO8CV5qbXqdraCrvhH8+ftqjM0o4NnHBnE=
-github.com/Zaba505/gqlc v0.0.0-20181218171234-b69d19cefdf6 h1:TsZcrzA7fzkfleiE1M15m3GTBP+1pN7j84wCevl1CyI=
-github.com/Zaba505/gqlc v0.0.0-20181218171234-b69d19cefdf6/go.mod h1:tLekfHRfRCO8CV5qbXqdraCrvhH8+ftqjM0o4NnHBnE=
-github.com/Zaba505/gqlc v0.0.0-20181224043022-063ec5e32222 h1:emGS6NBB+PuREs0QvyUYq+15iZw8gAFp9AkJmcbZTpI=
-github.com/gqlc/graphql v0.0.0-20181224042329-5990952e1bf6 h1:o8M983H/gkUMb/GtKIGn3BVPKLURRz9OKlboE6CJGcA=
-github.com/gqlc/graphql v0.0.0-20181224042329-5990952e1bf6/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
+github.com/gqlc/compiler v0.0.0-20190326184126-f1d902cdceec h1:2ZL9/KXFmpz+aU74B+h/4so/GEKLHJ0VMGOG9gW+z08=
+github.com/gqlc/compiler v0.0.0-20190326184126-f1d902cdceec/go.mod h1:FQzSBy8jD26LgGT9ve4VIpdjwYnCZ6u5IWPs7MEt968=
+github.com/gqlc/graphql v0.0.0-20190209221855-7b9cbe385629 h1:9SnRx6JZVrX+LWvlY548qhKY4t73rIgXeeC+JtIHSXA=
+github.com/gqlc/graphql v0.0.0-20190209221855-7b9cbe385629/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
+github.com/gqlc/graphql v0.0.0-20190328032418-220cae1d0f7e h1:Ehipn+//OE5MRIKtT05WlxgWnGtTjUdEEUGnKx7KfYA=
+github.com/gqlc/graphql v0.0.0-20190328032418-220cae1d0f7e/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
