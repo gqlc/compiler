@@ -37,13 +37,13 @@ const genCtx = "genCtx"
 
 // WithContext returns a prepared context.Context
 // with the given generator context.
-func WithContext(ctx context.Context, gCtx GenCtx) context.Context {
+func WithContext(ctx context.Context, gCtx GeneratorContext) context.Context {
 	return context.WithValue(ctx, genCtx, gCtx)
 }
 
 // Context returns the generator context.
-func Context(ctx context.Context) GenCtx {
-	return ctx.Value(genCtx).(GenCtx)
+func Context(ctx context.Context) GeneratorContext {
+	return ctx.Value(genCtx).(GeneratorContext)
 }
 
 // Error represents an error from a generator.
