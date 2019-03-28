@@ -51,4 +51,6 @@ type Error struct {
 	Msg string
 }
 
-func (e Error) Error() string { return fmt.Sprintf("compiler: error occurred in %s:%s %s", e.GenName, e.DocName, e.Msg) }
+func (e Error) Error() string {
+	return fmt.Sprintf("compiler: error occurred in %s:%s %s", e.GenName, e.DocName, e.Msg)
+}

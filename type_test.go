@@ -24,7 +24,7 @@ type Mutation {}`
 		t.Errorf("unexpected error when parsing perfect schema: %s", err)
 	}
 
-	errs := CheckTypes(map[string]*ast.Document{"test": doc})
+	errs := CheckTypes([]*ast.Document{doc})
 	if errs != nil {
 		t.Fail()
 	}
@@ -47,7 +47,7 @@ type Mutation {}`
 			subT.Errorf("unexpected error when parsing perfect schema: %s", err)
 		}
 
-		ok, _ := verifySchema(map[string]*ast.Document{"perfect": doc})
+		ok, _ := verifySchema([]*ast.Document{doc})
 		if !ok {
 			subT.Fail()
 		}
@@ -73,7 +73,7 @@ schema {
 			subT.Errorf("unexpected error when parsing moreThanOne schema: %s", err)
 		}
 
-		ok, _ := verifySchema(map[string]*ast.Document{"moreThanOne": doc})
+		ok, _ := verifySchema([]*ast.Document{doc})
 		if ok {
 			subT.Fail()
 		}
@@ -92,7 +92,7 @@ scalar Query`
 			subT.Errorf("unexpected error when parsing perfect schema: %s", err)
 		}
 
-		ok, _ := verifySchema(map[string]*ast.Document{"perfect": doc})
+		ok, _ := verifySchema([]*ast.Document{doc})
 		if ok {
 			subT.Fail()
 		}

@@ -28,19 +28,19 @@ func (e *TypeError) Error() string {
 // "true" ok value. This signifies that the errors are more
 // along the lines of warnings.
 //
-type TypeChecker func(docs map[string]*ast.Document) (ok bool, errs []*TypeError)
+type TypeChecker func(docs ...*ast.Document) (ok bool, errs []*TypeError)
 
 // CheckTypes type checks a set of GraphQL documents.
 // Only one schema is allowed in a set of GraphQL documents.
 //
-func CheckTypes(docs map[string]*ast.Document, checkers ...TypeChecker) []*TypeError {
+func CheckTypes(docs []*ast.Document, checkers ...TypeChecker) []*TypeError {
 	validSchema, errs := verifySchema(docs)
 	if !validSchema {
 		return errs
 	}
 
 	for _, checker := range checkers {
-		ok, cerrs := checker(docs)
+		ok, cerrs := checker(docs...)
 		if !ok {
 			return cerrs
 		}
@@ -49,7 +49,7 @@ func CheckTypes(docs map[string]*ast.Document, checkers ...TypeChecker) []*TypeE
 }
 
 // verifySchema verifies that only one schema is contained in a GraphQL Document Set.
-func verifySchema(docs map[string]*ast.Document) (ok bool, errs []*TypeError) {
+func verifySchema(docs []*ast.Document) (ok bool, errs []*TypeError) {
 	// First, verify only one schema and collect all type declarations
 	var s []ast.Spec
 	tdecls := make(map[string]*ast.TypeSpec)
@@ -95,8 +95,8 @@ func verifySchema(docs map[string]*ast.Document) (ok bool, errs []*TypeError) {
 	return true, nil
 }
 
-// UnusedTypes checks a GraphQL Document Set for any unused types.
-func UnusedTypes(docs map[string]*ast.Document) (bool, []*TypeError) {
+// UnusedTypes checks a GraphQL Document(s) for any unused types.
+func UnusedTypes(docs ...*ast.Document) (bool, []*TypeError) {
 	// TODO
 	return false, nil
 }

@@ -1,6 +1,6 @@
-github.com/gqlc/compiler v0.0.0-20190326184126-f1d902cdceec h1:2ZL9/KXFmpz+aU74B+h/4so/GEKLHJ0VMGOG9gW+z08=
-github.com/gqlc/compiler v0.0.0-20190326184126-f1d902cdceec/go.mod h1:FQzSBy8jD26LgGT9ve4VIpdjwYnCZ6u5IWPs7MEt968=
+github.com/gqlc/compiler v0.0.0-20190328182843-36a7de5b6916 h1:6ZpI4Z9Ty5FSYTam5CUEDGoBBIoz+0sBB7PEaVoSlto=
+github.com/gqlc/compiler v0.0.0-20190328182843-36a7de5b6916/go.mod h1:FQzSBy8jD26LgGT9ve4VIpdjwYnCZ6u5IWPs7MEt968=
 github.com/gqlc/graphql v0.0.0-20190209221855-7b9cbe385629 h1:9SnRx6JZVrX+LWvlY548qhKY4t73rIgXeeC+JtIHSXA=
 github.com/gqlc/graphql v0.0.0-20190209221855-7b9cbe385629/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
-github.com/gqlc/graphql v0.0.0-20190328032418-220cae1d0f7e h1:Ehipn+//OE5MRIKtT05WlxgWnGtTjUdEEUGnKx7KfYA=
-github.com/gqlc/graphql v0.0.0-20190328032418-220cae1d0f7e/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
+github.com/gqlc/graphql v0.0.0-20190328212309-1e25e1b43103 h1:il/QepgKjVfzqfjrYIYlZd6KQPpwcDyPzOr5eFlruYE=
+github.com/gqlc/graphql v0.0.0-20190328212309-1e25e1b43103/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
