@@ -36,10 +36,18 @@ func (ctx *genContext) Open(filename string) (io.WriteCloser, error) { return os
 
 const genCtx = "genCtx"
 
-// WithContext returns a prepared context.Context
-// with the given generator context.
-func WithContext(ctx context.Context, dir string) context.Context {
+// WithDir returns a prepared context.Context
+// with a GeneratorContext rooted at the provided directory.
+//
+func WithDir(ctx context.Context, dir string) context.Context {
 	return context.WithValue(ctx, genCtx, &genContext{dir: dir})
+}
+
+// WithContext returns a prepared context.Context
+// with the given GeneratorContext.
+//
+func WithContext(ctx context.Context, gCtx GeneratorContext) context.Context {
+	return context.WithValue(ctx, genCtx, gCtx)
 }
 
 // Context returns the generator context.
