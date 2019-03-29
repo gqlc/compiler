@@ -7,6 +7,7 @@ import (
 	"github.com/gqlc/compiler"
 	"github.com/gqlc/graphql/parser"
 	"github.com/gqlc/graphql/token"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,6 +18,14 @@ const (
 	goldInFile  = "test.gql"
 	goldOutFile = "test.md"
 )
+
+type testCtx struct {
+	io.Writer
+}
+
+func (ctx testCtx) Open(filename string) (io.WriteCloser, error) { return ctx, nil }
+
+func (ctx testCtx) Close() error { return nil }
 
 func TestGenerator_Generate(t *testing.T) {
 	// Get working directory
@@ -48,8 +57,8 @@ func TestGenerator_Generate(t *testing.T) {
 	// Run generator
 	var b bytes.Buffer
 	gen := new(Generator)
-	ctx := compiler.WithContext(context.Background(), compiler.GenCtx{Out: &b})
-	err = gen.Generate(ctx, doc, "")
+	ctx := compiler.WithContext(context.Background(), testCtx{Writer: &b})
+	err = gen.Generate(ctx, doc, `{"title": "Test Documentation"}`)
 	if err != nil {
 		t.Error(err)
 		return

@@ -2,9 +2,14 @@
 package doc
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"github.com/gqlc/compiler"
 	"github.com/gqlc/graphql/ast"
+	"gitlab.com/golang-commonmark/markdown"
+	"io"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -14,12 +19,24 @@ import (
 // Generator generates Documentation for a GraphQL Document(s).
 type Generator struct {
 	sync.Once
+	md *markdown.Markdown
 }
 
 // Generate generates documentation for the given document.
-func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts string) error {
+func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts string) (err error) {
+	defer func() {
+		if err != nil {
+			err = compiler.Error{
+				DocName: doc.Name,
+				GenName: "doc",
+				Msg:     err.Error(),
+			}
+		}
+	}()
+
 	// Initialize templates here so they don't occur when doc gen isn't used
 	gen.Do(func() {
+		gen.md = markdown.New()
 		docTmpl.Funcs(map[string]interface{}{
 			"add":     func(a, b int) int { return a + b },
 			"Title":   strings.Title,
@@ -69,10 +86,23 @@ func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts stri
 		template.Must(docTmpl.New("objTmpl").Parse(objTmpl))
 		template.Must(docTmpl.New("fieldListTmpl").Parse(fieldListTmpl))
 	})
+	// Unmarshal options
+	var optData struct {
+		Title string `json:"title"`
+		HTML  bool   `json:"html"`
+	}
+	if len(opts) > 0 {
+		err = json.Unmarshal(json.RawMessage(opts), &optData)
+		if err != nil {
+			return
+		}
+	}
 
 	// Extract types from doc into an mdData
 	tmplData := extractTypes(doc)
-	// TODO: Extract title from opts
+	if optData.Title != "" {
+		tmplData.Title = optData.Title
+	}
 
 	// Lexicographically sort types from document in mdData
 	sort.Sort(tmplData.Scalars)
@@ -83,33 +113,61 @@ func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts stri
 	sort.Sort(tmplData.Inputs)
 	sort.Sort(tmplData.Directives)
 
+	// Generate Markdown
+	var b bytes.Buffer
+	err = docTmpl.Execute(&b, tmplData)
+	if err != nil {
+		return
+	}
+
 	// Extract generator context
 	gCtx := compiler.Context(ctx)
-	if gCtx.Out == nil {
-		panic("compiler: doc: nil output provided")
-	}
 
-	err := docTmpl.Execute(gCtx.Out, tmplData)
+	// Open file to write markdown to
+	base := doc.Name[:len(doc.Name)-len(filepath.Ext(doc.Name))]
+	mdFile, err := gCtx.Open(base + ".md")
+	defer mdFile.Close()
 	if err != nil {
-		return compiler.Error{
-			DocName: doc.Name,
-			GenName: "doc",
-			Msg:     err.Error(),
-		}
+		return
 	}
 
-	// TODO: Pass markdown source through html renderer if option is passed
-	return nil
+	// Check for HTML option
+	if !optData.HTML {
+		_, err = io.Copy(mdFile, &b)
+		return
+	}
+
+	// Write markdown but make sure to keep bytes for HTML rendering
+	_, err = io.Copy(mdFile, bytes.NewReader(b.Bytes()))
+	if err != nil {
+		return
+	}
+
+	// Open HTML file
+	htmlFile, err := gCtx.Open(base + ".html")
+	defer htmlFile.Close()
+	if err != nil {
+		return
+	}
+
+	err = gen.md.Render(htmlFile, b.Bytes())
+	return
 }
 
 // GenerateAll generates documentation for all the given documents.
-func (gen *Generator) GenerateAll(ctx context.Context, doc []*ast.Document, opts string) error {
-	return nil
+func (gen *Generator) GenerateAll(ctx context.Context, docs []*ast.Document, opts string) (err error) {
+	for _, doc := range docs {
+		err = gen.Generate(ctx, doc, opts)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 func extractTypes(doc *ast.Document) (tmplData *mdData) {
 	tmplData = &mdData{
-		Title: doc.Name,
+		Title: doc.Name[:len(doc.Name)-len(filepath.Ext(doc.Name))],
 	}
 
 	for _, gd := range doc.Types {
