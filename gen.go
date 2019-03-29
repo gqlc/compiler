@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gqlc/graphql/ast"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -22,23 +23,23 @@ type CodeGenerator interface {
 // GeneratorContext represents the directory to which
 // the CodeGenerator is to write and other information
 // about the context in which the Generator runs.
-type GeneratorContext struct {
-	// Dir is the root directory where the generator
-	// will be writing to. This is prepended to all
-	// opened files.
-	//
-	Dir string
+type GeneratorContext interface {
+	// Open opens a file in the GeneratorContext (i.e. directory).
+	Open(filename string) (io.WriteCloser, error)
 }
 
-// Open opens a file in the GeneratorContext (i.e. directory).
-func (ctx GeneratorContext) Open(filename string) (*os.File, error) { return os.Open(filepath.Join(ctx.Dir, filename)) }
+type genContext struct {
+	dir string
+}
+
+func (ctx *genContext) Open(filename string) (io.WriteCloser, error) { return os.Open(filepath.Join(ctx.dir, filename)) }
 
 const genCtx = "genCtx"
 
 // WithContext returns a prepared context.Context
 // with the given generator context.
-func WithContext(ctx context.Context, gCtx GeneratorContext) context.Context {
-	return context.WithValue(ctx, genCtx, gCtx)
+func WithContext(ctx context.Context, dir string) context.Context {
+	return context.WithValue(ctx, genCtx, &genContext{dir: dir})
 }
 
 // Context returns the generator context.
