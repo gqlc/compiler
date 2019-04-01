@@ -32,7 +32,9 @@ type genContext struct {
 	dir string
 }
 
-func (ctx *genContext) Open(filename string) (io.WriteCloser, error) { return os.Open(filepath.Join(ctx.dir, filename)) }
+func (ctx *genContext) Open(filename string) (io.WriteCloser, error) {
+	return os.Open(filepath.Join(ctx.dir, filename))
+}
 
 const genCtx = "genCtx"
 
