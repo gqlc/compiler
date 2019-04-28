@@ -105,15 +105,6 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 	return nodes, nil
 }
 
-func isCircular(a, b *node) bool {
-	for _, c := range b.Childs {
-		if a == c {
-			return true
-		}
-	}
-	return false
-}
-
 func resolveImports(root *node) (err error) {
 	typeMap := make(map[string]*ast.GenDecl)
 
@@ -321,7 +312,7 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 		case *ast.Ident:
 			name = fmt.Sprintf("%s.%s", n.Name, v.Name)
 		case *ast.SelectorExpr:
-			name = fmt.Sprintf("%s.%s", v.Sel.Name, v.X.(*ast.Ident).Name)
+			name = fmt.Sprintf("%s.%s", v.X.(*ast.Ident).Name, v.Sel.Name)
 		}
 
 		add(name, tg, typeMap)
@@ -336,7 +327,7 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 					continue
 				}
 
-				name = fmt.Sprintf("%s.%s", se.Sel.Name, se.X.(*ast.Ident).Name)
+				name = fmt.Sprintf("%s.%s", se.X.(*ast.Ident).Name, se.Sel.Name)
 				add(name, nil, typeMap)
 			}
 
@@ -356,7 +347,7 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 					continue
 				}
 
-				name = fmt.Sprintf("%s.%s", se.Sel.Name, se.X.(*ast.Ident).Name)
+				name = fmt.Sprintf("%s.%s", se.X.(*ast.Ident).Name, se.Sel.Name)
 				add(name, nil, typeMap)
 			}
 		case *ast.EnumType:
@@ -398,6 +389,15 @@ func resolveFieldList(fields *ast.FieldList, typeMap map[string]*ast.GenDecl, ad
 		}
 	}
 	return
+}
+
+func isCircular(a, b *node) bool {
+	for _, c := range b.Childs {
+		if a == c {
+			return true
+		}
+	}
+	return false
 }
 
 func unwrapType(t ast.Expr) ast.Expr {

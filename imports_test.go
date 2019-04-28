@@ -709,6 +709,47 @@ func TestAddTypes(t *testing.T) {
 	}
 }
 
+func TestResolveImports(t *testing.T) {
+	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"graph": strings.NewReader(graphGQL), "api": strings.NewReader(apiGQL)}, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Initialize nodes and dMap for createImportTries
+	dMap := make(map[string]*node, len(docs))
+	nodes := make([]*node, len(docs))
+	for i, doc := range docs {
+		n := &node{Document: doc}
+		dMap[doc.Name] = n
+		nodes[i] = n
+	}
+
+	// Create Import tries
+	forest, err := createImportTries(nodes, dMap)
+	if err != nil {
+		t.Errorf("unexpected error when creating import forest: %s", err)
+		return
+	}
+
+	err = resolveImports(forest[0])
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if len(forest[0].Types) != 4 {
+		t.Fail()
+		return
+	}
+
+	for _, tg := range forest[0].Types {
+		if tg == nil {
+			t.Fail()
+			return
+		}
+	}
+}
+
 var (
 	graphGQL = `interface Node {
 	id: ID!
@@ -755,5 +796,12 @@ func TestReduceImports(t *testing.T) {
 	if len(docs[0].Types) != 4 {
 		t.Fail()
 		return
+	}
+
+	for _, tg := range docs[0].Types {
+		if tg == nil {
+			t.Fail()
+			return
+		}
 	}
 }
