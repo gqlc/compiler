@@ -59,7 +59,7 @@ func verifySchema(docs []*ast.Document) (ok bool, errs []*TypeError) {
 		}
 
 		for _, ss := range doc.Schemas {
-			s = append(s, ss.Specs...)
+			s = append(s, ss.Spec)
 		}
 
 		for _, gtd := range doc.Types {
@@ -67,11 +67,17 @@ func verifySchema(docs []*ast.Document) (ok bool, errs []*TypeError) {
 				continue
 			}
 
-			for _, sts := range gtd.Specs {
-				ts := sts.(*ast.TypeSpec)
-				tdecls[ts.Name.Name] = ts
+			ts := gtd.Spec.(*ast.TypeSpec)
+			switch v := ts.Name.(type) {
+			case *ast.Ident:
+				tdecls[v.Name] = ts
+			case *ast.SelectorExpr:
+				tdecls[v.Sel.Name] = ts
 			}
 		}
+	}
+	if len(s) == 0 {
+		return
 	}
 	if len(s) > 1 {
 		errs = append(errs, &TypeError{Msg: "document set contains more than one GraphQL schema"})
