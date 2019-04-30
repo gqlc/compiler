@@ -703,6 +703,10 @@ func TestAddTypes(t *testing.T) {
 			return true
 		}
 
+		if tg, exists := decls[name]; exists && tg != nil {
+			return false
+		}
+
 		decls[name] = decl
 		return false
 	})
@@ -711,8 +715,7 @@ func TestAddTypes(t *testing.T) {
 		return
 	}
 
-	fmt.Println(typeMap)
-	if len(typeMap) != 4 {
+	if len(typeMap) != 5 {
 		t.Fail()
 	}
 }
@@ -745,7 +748,7 @@ func TestResolveImports(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if len(forest[0].Types) != 4 {
+	if len(forest[0].Types) != 5 {
 		t.Fail()
 		return
 	}
@@ -771,7 +774,11 @@ interface Connection {
 
 	apiGQL = `import "graph"
 
-type User implements graph.Node {
+interface TestNode {
+	id: ID!
+}
+
+type User implements graph.Node & TestNode {
 	id: ID!
 	name: String
 }
@@ -801,7 +808,7 @@ func TestReduceImports(t *testing.T) {
 		return
 	}
 
-	if len(docs[0].Types) != 4 {
+	if len(docs[0].Types) != 5 {
 		t.Fail()
 		return
 	}

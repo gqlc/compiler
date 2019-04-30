@@ -124,6 +124,10 @@ func resolveImports(root *node) (err error) {
 			return true
 		}
 
+		if tg, exists := decls[name]; exists && tg != nil {
+			return false
+		}
+
 		decls[name] = decl
 		return false
 	})
@@ -400,6 +404,7 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 		switch v := ts.Name.(type) {
 		case *ast.Ident:
 			name = fmt.Sprintf(selExprTmpl, n.Name, v.Name)
+			ts.Name = &ast.SelectorExpr{X: &ast.Ident{Name: n.Name}, Sel: v}
 		case *ast.SelectorExpr:
 			name = fmt.Sprintf(selExprTmpl, v.X.(*ast.Ident).Name, v.Sel.Name)
 		}
@@ -415,12 +420,14 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 		case *ast.ScalarType:
 			// Scalar doesn't need anything done to it
 		case *ast.ObjectType:
-			for _, impl := range v.Impls {
-				switch v := impl.(type) {
+			for i := range v.Impls {
+				impl := v.Impls[i]
+				switch u := impl.(type) {
 				case *ast.Ident:
-					name = fmt.Sprintf(selExprTmpl, n.Name, v.Name)
+					name = fmt.Sprintf(selExprTmpl, n.Name, u.Name)
+					v.Impls[i] = &ast.SelectorExpr{X: &ast.Ident{Name: n.Name}, Sel: u}
 				case *ast.SelectorExpr:
-					name = fmt.Sprintf(selExprTmpl, v.X.(*ast.Ident).Name, v.Sel.Name)
+					name = fmt.Sprintf(selExprTmpl, u.X.(*ast.Ident).Name, u.Sel.Name)
 				}
 				add(name, nil, typeMap)
 			}
@@ -435,13 +442,15 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 				return
 			}
 		case *ast.UnionType:
-			for _, impl := range v.Members {
-				se, ok := impl.(*ast.SelectorExpr)
-				if !ok {
-					continue
+			for i := range v.Members {
+				mem := v.Members[i]
+				switch u := mem.(type) {
+				case *ast.Ident:
+					name = fmt.Sprintf(selExprTmpl, n.Name, u.Name)
+					v.Members[i] = &ast.SelectorExpr{X: &ast.Ident{Name: n.Name}, Sel: u}
+				case *ast.SelectorExpr:
+					name = fmt.Sprintf(selExprTmpl, u.X.(*ast.Ident).Name, u.Sel.Name)
 				}
-
-				name = fmt.Sprintf(selExprTmpl, se.X.(*ast.Ident).Name, se.Sel.Name)
 				add(name, nil, typeMap)
 			}
 		case *ast.EnumType:
