@@ -698,12 +698,20 @@ func TestAddTypes(t *testing.T) {
 	}
 
 	typeMap := make(map[string]*ast.GenDecl)
-	err = addTypes(&node{Document: doc}, typeMap, func(name string, decl *ast.GenDecl, decls map[string]*ast.GenDecl) { decls[name] = decl })
+	err = addTypes(&node{Document: doc}, typeMap, func(name string, decl *ast.GenDecl, decls map[string]*ast.GenDecl) bool {
+		if isBuiltinType(name) {
+			return true
+		}
+
+		decls[name] = decl
+		return false
+	})
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
+	fmt.Println(typeMap)
 	if len(typeMap) != 4 {
 		t.Fail()
 	}
@@ -770,13 +778,65 @@ type User implements graph.Node {
 
 type UserConnection implements graph.Connection {
 	total: Int
-	edges: [Node]
+	edges: [graph.Node]
 	hasNextPage: Boolean
 }`
 )
 
 func TestReduceImports(t *testing.T) {
 	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"graph": strings.NewReader(graphGQL), "api": strings.NewReader(apiGQL)}, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	docs, err = ReduceImports(docs)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if len(docs) != 1 {
+		t.Fail()
+		return
+	}
+
+	if len(docs[0].Types) != 4 {
+		t.Fail()
+		return
+	}
+
+	for _, tg := range docs[0].Types {
+		if tg == nil {
+			t.Fail()
+			return
+		}
+	}
+}
+
+var (
+	impGQL = `interface Node {
+	id: ID!
+}
+
+interface Connection {
+	total: Int
+	edges: [Node]
+	hasNextPage: Boolean
+}`
+
+	baseGQL = `import "graph"
+
+type User {
+	id: ID!
+	name: String
+}
+
+type UserConnection implements graph.Connection {}`
+)
+
+func TestPeerTypes(t *testing.T) {
+	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"graph": strings.NewReader(impGQL), "base": strings.NewReader(baseGQL)}, 0)
 	if err != nil {
 		t.Error(err)
 		return

@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"fmt"
 	"github.com/gqlc/graphql/ast"
+	"strings"
 )
 
 // IsImported reports whether or not a type declaration
@@ -107,9 +108,25 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 
 func resolveImports(root *node) (err error) {
 	typeMap := make(map[string]*ast.GenDecl)
+	defer func() {
+		// Convert type map to type slice
+		i := 0
+		root.Types = make([]*ast.GenDecl, len(typeMap))
+		for _, v := range typeMap {
+			root.Types[i] = v
+			i++
+		}
+	}()
 
 	// Add root types to typeMap
-	err = addTypes(root, typeMap, func(name string, decl *ast.GenDecl, decls map[string]*ast.GenDecl) { decls[name] = decl })
+	err = addTypes(root, typeMap, func(name string, decl *ast.GenDecl, decls map[string]*ast.GenDecl) bool {
+		if isBuiltinType(name) {
+			return true
+		}
+
+		decls[name] = decl
+		return false
+	})
 	if err != nil {
 		return
 	}
@@ -122,10 +139,24 @@ func resolveImports(root *node) (err error) {
 
 	// Walk import graph
 	err = walk(q, typeMap, func(n *node, decls map[string]*ast.GenDecl) error {
-		return addTypes(n, decls, func(name string, decl *ast.GenDecl, types map[string]*ast.GenDecl) {
+		return addTypes(n, decls, func(name string, decl *ast.GenDecl, types map[string]*ast.GenDecl) bool {
+			// Check if builtin type
+			if isBuiltinType(name) {
+				return true
+			}
+
+			// Skip if it isn't imported or previously encountered peer type
+			_, exists := types[name]
+			switch {
+			case !exists && decl != nil:
+				return false
+			case exists && decl == nil:
+				return true
+			}
+
 			if decl == nil {
 				types[name] = decl
-				return
+				return false
 			}
 
 			v, exists := types[name]
@@ -135,16 +166,72 @@ func resolveImports(root *node) (err error) {
 			case v != nil && v != decl:
 				types[name] = mergeTypes(v, decl)
 			}
+			return false
 		})
 	})
-
-	// Convert type map to type slice
-	i := 0
-	root.Types = make([]*ast.GenDecl, len(typeMap))
-	for _, v := range typeMap {
-		root.Types[i] = v
-		i++
+	if err != nil {
+		return
 	}
+
+	// Check for any un-imported peer types
+	peerMap := make(map[string]*ast.GenDecl)
+	for name, tg := range typeMap {
+		if tg == nil {
+			peerMap[name] = nil
+		}
+	}
+	for len(peerMap) > 0 {
+		q = q.Init()
+		for _, c := range root.Childs {
+			q.PushBack(c)
+		}
+
+		// Walk import graph
+		err = walk(q, peerMap, func(n *node, decls map[string]*ast.GenDecl) error {
+			return addTypes(n, decls, func(name string, decl *ast.GenDecl, types map[string]*ast.GenDecl) bool {
+				// Check if builtin type
+				if isBuiltinType(name) {
+					return true
+				}
+
+				// Skip if it isn't imported or previously encountered peer type
+				_, exists := types[name]
+				switch {
+				case !exists && decl != nil:
+					return false
+				case exists && decl == nil:
+					return true
+				}
+
+				if decl == nil {
+					types[name] = decl
+					return false
+				}
+
+				v, exists := types[name]
+				switch {
+				case v == nil && exists:
+					types[name] = decl
+				case v != nil && v != decl:
+					types[name] = mergeTypes(v, decl)
+				}
+				return false
+			})
+		})
+		if err != nil {
+			return
+		}
+
+		for name, tg := range peerMap {
+			if tg == nil {
+				continue
+			}
+
+			typeMap[name] = tg
+			delete(peerMap, name)
+		}
+	}
+
 	return
 }
 
@@ -295,7 +382,9 @@ func mergeExprs(o, n ast.Expr) (e ast.Expr) {
 	return
 }
 
-func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.GenDecl, map[string]*ast.GenDecl)) (err error) {
+const selExprTmpl = "%s.%s"
+
+func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.GenDecl, map[string]*ast.GenDecl) bool) (err error) {
 	for _, tg := range n.Types {
 		var ts *ast.TypeSpec
 		switch v := tg.Spec.(type) {
@@ -310,33 +399,38 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 		var name string
 		switch v := ts.Name.(type) {
 		case *ast.Ident:
-			name = fmt.Sprintf("%s.%s", n.Name, v.Name)
+			name = fmt.Sprintf(selExprTmpl, n.Name, v.Name)
 		case *ast.SelectorExpr:
-			name = fmt.Sprintf("%s.%s", v.X.(*ast.Ident).Name, v.Sel.Name)
+			name = fmt.Sprintf(selExprTmpl, v.X.(*ast.Ident).Name, v.Sel.Name)
 		}
 
-		add(name, tg, typeMap)
+		// Add type decl
+		skip := add(name, tg, typeMap)
+		if skip {
+			continue
+		}
 
+		// Find any imported types contained within decl
 		switch v := ts.Type.(type) {
 		case *ast.ScalarType:
 			// Scalar doesn't need anything done to it
 		case *ast.ObjectType:
 			for _, impl := range v.Impls {
-				se, ok := impl.(*ast.SelectorExpr)
-				if !ok {
-					continue
+				switch v := impl.(type) {
+				case *ast.Ident:
+					name = fmt.Sprintf(selExprTmpl, n.Name, v.Name)
+				case *ast.SelectorExpr:
+					name = fmt.Sprintf(selExprTmpl, v.X.(*ast.Ident).Name, v.Sel.Name)
 				}
-
-				name = fmt.Sprintf("%s.%s", se.X.(*ast.Ident).Name, se.Sel.Name)
 				add(name, nil, typeMap)
 			}
 
-			err = resolveFieldList(v.Fields, typeMap, add)
+			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
 			if err != nil {
 				return
 			}
 		case *ast.InterfaceType:
-			err = resolveFieldList(v.Fields, typeMap, add)
+			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
 			if err != nil {
 				return
 			}
@@ -347,21 +441,21 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 					continue
 				}
 
-				name = fmt.Sprintf("%s.%s", se.X.(*ast.Ident).Name, se.Sel.Name)
+				name = fmt.Sprintf(selExprTmpl, se.X.(*ast.Ident).Name, se.Sel.Name)
 				add(name, nil, typeMap)
 			}
 		case *ast.EnumType:
-			err = resolveFieldList(v.Fields, typeMap, add)
+			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
 			if err != nil {
 				return
 			}
 		case *ast.InputType:
-			err = resolveFieldList(v.Fields, typeMap, add)
+			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
 			if err != nil {
 				return err
 			}
 		case *ast.DirectiveType:
-			err = resolveFieldList(v.Args, typeMap, add)
+			err = resolveFieldList(n.Name, v.Args, typeMap, add)
 			if err != nil {
 				return err
 			}
@@ -371,21 +465,29 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 	return
 }
 
-func resolveFieldList(fields *ast.FieldList, typeMap map[string]*ast.GenDecl, add func(string, *ast.GenDecl, map[string]*ast.GenDecl)) (err error) {
+func resolveFieldList(name string, fields *ast.FieldList, typeMap map[string]*ast.GenDecl, add func(string, *ast.GenDecl, map[string]*ast.GenDecl) bool) (err error) {
 	if fields == nil {
 		return
 	}
 
 	for _, f := range fields.List {
-		err = resolveFieldList(f.Args, typeMap, add)
+		err = resolveFieldList(name, f.Args, typeMap, add)
 		if err != nil {
 			return
 		}
 
 		t := unwrapType(f.Type)
-		if se, ok := t.(*ast.SelectorExpr); ok {
-			name := fmt.Sprintf("%s.%s", se.Sel.Name, se.X.(*ast.Ident).Name)
-			add(name, nil, typeMap)
+		switch v := t.(type) {
+		case *ast.Ident:
+			tname := fmt.Sprintf(selExprTmpl, name, v.Name)
+			add(tname, nil, typeMap)
+
+			if !isBuiltinType(tname) {
+				insertType(f.Type, &ast.SelectorExpr{X: &ast.Ident{Name: name}, Sel: v})
+			}
+		case *ast.SelectorExpr:
+			tname := fmt.Sprintf(selExprTmpl, v.X.(*ast.Ident).Name, v.Sel.Name)
+			add(tname, nil, typeMap)
 		}
 	}
 	return
@@ -398,6 +500,12 @@ func isCircular(a, b *node) bool {
 		}
 	}
 	return false
+}
+
+func isBuiltinType(name string) bool {
+	s := strings.Split(name, ".")
+	tname := strings.ToLower(s[1])
+	return tname == "id" || tname == "boolean" || tname == "int" || tname == "string" || tname == "float"
 }
 
 func unwrapType(t ast.Expr) ast.Expr {
@@ -413,4 +521,25 @@ func unwrapType(t ast.Expr) ast.Expr {
 	}
 
 	return nil
+}
+
+func insertType(o, n ast.Expr) {
+	switch v := o.(type) {
+	case *ast.Ident:
+		o = n
+	case *ast.List:
+		if _, ok := v.Type.(*ast.Ident); !ok {
+			insertType(v.Type, n)
+			break
+		}
+
+		v.Type = n
+	case *ast.NonNull:
+		if _, ok := v.Type.(*ast.Ident); !ok {
+			insertType(v.Type, n)
+			break
+		}
+
+		v.Type = n
+	}
 }
