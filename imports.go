@@ -407,6 +407,8 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 			ts.Name = &ast.SelectorExpr{X: &ast.Ident{Name: n.Name}, Sel: v}
 		case *ast.SelectorExpr:
 			name = fmt.Sprintf(selExprTmpl, v.X.(*ast.Ident).Name, v.Sel.Name)
+		default: // The only type which doesn't hav a name is a schema
+			name = fmt.Sprintf(selExprTmpl, n.Name, "Schema")
 		}
 
 		// Add type decl
@@ -454,10 +456,7 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 				add(name, nil, typeMap)
 			}
 		case *ast.EnumType:
-			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
-			if err != nil {
-				return
-			}
+			// TODO: probably should resolve directives here
 		case *ast.InputType:
 			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
 			if err != nil {

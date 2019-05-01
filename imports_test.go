@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"fmt"
 	"github.com/gqlc/graphql/ast"
 	"github.com/gqlc/graphql/parser"
 	"github.com/gqlc/graphql/token"
@@ -165,7 +164,6 @@ func TestCreateImportTries(t *testing.T) {
 		{"d": 0, "i": 1, "j": 1, "e": 2, "h": 2, "f": 2},
 	}
 	for i, lvls := range trieLvls {
-		fmt.Println(i, lvls)
 		ok := walk(forest[i], 0, func(lvl int, n *node) bool {
 			nlvl, exists := lvls[n.Name]
 			if exists && nlvl != lvl {
