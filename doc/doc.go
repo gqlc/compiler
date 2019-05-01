@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/gqlc/compiler"
 	"github.com/gqlc/graphql/ast"
 	"gitlab.com/golang-commonmark/markdown"
@@ -22,6 +23,60 @@ type Generator struct {
 	md *markdown.Markdown
 }
 
+func (gen *Generator) initTmpls() {
+	gen.md = markdown.New()
+	docTmpl.Funcs(map[string]interface{}{
+		"add":     func(a, b int) int { return a + b },
+		"Title":   strings.Title,
+		"ToLower": strings.ToLower,
+		"ToMembers": func(docName string, t ast.Expr) (mems []string) {
+			unt := t.(*ast.UnionType)
+			for _, mem := range unt.Members {
+				mems = append(mems, getName(docName, mem))
+			}
+			return
+		},
+		"ToFieldData": ToFieldData,
+		"ToObjData":   ToObjData,
+		"GetName":     getName,
+		"IsImported":  func(s string) bool { return strings.Contains(s, ".") },
+		"Trim":        func(s string) string { return strings.Trim(strings.TrimSpace(s), "\"") },
+		"PrintDir": func(d *ast.DirectiveLit) string {
+			var s strings.Builder
+			s.WriteRune('@')
+			s.WriteString(d.Name)
+
+			if d.Args == nil {
+				return s.String()
+			} else if len(d.Args.Args) == 0 {
+				return s.String()
+			}
+
+			s.WriteRune('(')
+			aLen := len(d.Args.Args)
+			for i, arg := range d.Args.Args {
+				s.WriteString(arg.Name.Name)
+				s.WriteString(": ")
+				switch v := arg.Value.(type) {
+				case *ast.BasicLit:
+					s.WriteString(v.Value)
+				case *ast.ListLit:
+				case *ast.ObjLit:
+				}
+
+				if i < aLen-1 {
+					s.WriteString(", ")
+				}
+			}
+			s.WriteRune(')')
+			return s.String()
+		},
+	})
+	template.Must(docTmpl.Parse(mdTmpl))
+	template.Must(docTmpl.New("objTmpl").Parse(objTmpl))
+	template.Must(docTmpl.New("fieldListTmpl").Parse(fieldListTmpl))
+}
+
 // Generate generates documentation for the given document.
 func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts string) (err error) {
 	defer func() {
@@ -35,57 +90,8 @@ func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts stri
 	}()
 
 	// Initialize templates here so they don't occur when doc gen isn't used
-	gen.Do(func() {
-		gen.md = markdown.New()
-		docTmpl.Funcs(map[string]interface{}{
-			"add":     func(a, b int) int { return a + b },
-			"Title":   strings.Title,
-			"ToLower": strings.ToLower,
-			"ToMembers": func(t ast.Expr) (mems []string) {
-				unt := t.(*ast.UnionType)
-				for _, mem := range unt.Members {
-					mems = append(mems, mem.Name)
-				}
-				return
-			},
-			"ToFieldData": ToFieldData,
-			"ToObjData":   ToObjData,
-			"Trim":        func(s string) string { return strings.Trim(strings.TrimSpace(s), "\"") },
-			"PrintDir": func(d *ast.DirectiveLit) string {
-				var s strings.Builder
-				s.WriteRune('@')
-				s.WriteString(d.Name)
+	gen.Do(gen.initTmpls)
 
-				if d.Args == nil {
-					return s.String()
-				} else if len(d.Args.Args) == 0 {
-					return s.String()
-				}
-
-				s.WriteRune('(')
-				aLen := len(d.Args.Args)
-				for i, arg := range d.Args.Args {
-					s.WriteString(arg.Name.Name)
-					s.WriteString(": ")
-					switch v := arg.Value.(type) {
-					case *ast.BasicLit:
-						s.WriteString(v.Value)
-					case *ast.ListLit:
-					case *ast.ObjLit:
-					}
-
-					if i < aLen-1 {
-						s.WriteString(", ")
-					}
-				}
-				s.WriteRune(')')
-				return s.String()
-			},
-		})
-		template.Must(docTmpl.Parse(mdTmpl))
-		template.Must(docTmpl.New("objTmpl").Parse(objTmpl))
-		template.Must(docTmpl.New("fieldListTmpl").Parse(fieldListTmpl))
-	})
 	// Unmarshal options
 	var optData struct {
 		Title string `json:"title"`
@@ -102,6 +108,11 @@ func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts stri
 	tmplData := extractTypes(doc)
 	if optData.Title != "" {
 		tmplData.Title = optData.Title
+	}
+	for _, ig := range doc.Imports {
+		for _, is := range ig.Specs {
+			tmplData.Imports = append(tmplData.Imports, strings.Trim(is.Path.Value, "\""))
+		}
 	}
 
 	// Lexicographically sort types from document in mdData
@@ -167,12 +178,24 @@ func (gen *Generator) GenerateAll(ctx context.Context, docs []*ast.Document, opt
 
 func extractTypes(doc *ast.Document) (tmplData *mdData) {
 	tmplData = &mdData{
-		Title: doc.Name[:len(doc.Name)-len(filepath.Ext(doc.Name))],
+		DocName: doc.Name[:len(doc.Name)-len(filepath.Ext(doc.Name))],
+		Title:   doc.Name[:len(doc.Name)-len(filepath.Ext(doc.Name))],
 	}
 
 	for _, gd := range doc.Types {
-		ts, ok := gd.Specs[0].(*ast.TypeSpec)
+		ts, ok := gd.Spec.(*ast.TypeSpec)
 		if !ok {
+			continue
+		}
+
+		var name string
+		switch v := ts.Name.(type) {
+		case *ast.Ident:
+			name = doc.Name
+		case *ast.SelectorExpr:
+			name = v.X.(*ast.Ident).Name
+		}
+		if _, ok := ts.Type.(*ast.SchemaType); name != doc.Name && !ok {
 			continue
 		}
 
@@ -203,13 +226,30 @@ func extractTypes(doc *ast.Document) (tmplData *mdData) {
 
 	for _, op := range tmplData.Schema.Type.(*ast.SchemaType).Fields.List {
 		for i, obj := range tmplData.Objects {
-			if strings.ToLower(obj.Name.Name) != op.Name.Name {
+			name := getName(tmplData.DocName, obj.Name)
+			if strings.ToLower(name) != op.Name.Name {
 				continue
 			}
 
 			tmplData.Objects = append(tmplData.Objects[:i], tmplData.Objects[i+1:]...)
 			tmplData.RootTypes = append(tmplData.RootTypes, obj)
 		}
+	}
+	return
+}
+
+func getName(docName string, e ast.Expr) (name string) {
+	switch v := e.(type) {
+	case *ast.Ident:
+		name = v.Name
+	case *ast.SelectorExpr:
+		x := v.X.(*ast.Ident).Name
+		if x == docName {
+			name = v.Sel.Name
+			break
+		}
+
+		name = fmt.Sprintf("%s.%s", x, v.Sel.Name)
 	}
 	return
 }

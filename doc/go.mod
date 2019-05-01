@@ -1,8 +1,8 @@
 module github.com/gqlc/compiler/doc
 
 require (
-	github.com/gqlc/compiler v0.0.0-20190329032008-bde479c3b523
-	github.com/gqlc/graphql v0.0.0-20190328224916-5b9bb18a4a88
+	github.com/gqlc/compiler v0.0.0-20190501021318-f96b6f4d97c0
+	github.com/gqlc/graphql v0.0.0-20190428015357-5328d05da0ee
 	github.com/russross/blackfriday v2.0.0+incompatible // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	gitlab.com/golang-commonmark/html v0.0.0-20180917080848-cfaf75183c4a // indirect
@@ -11,5 +11,5 @@ require (
 	gitlab.com/golang-commonmark/mdurl v0.0.0-20180912090424-e5bce34c34f2 // indirect
 	gitlab.com/golang-commonmark/puny v0.0.0-20180912090636-2cd490539afe // indirect
 	gitlab.com/opennota/wd v0.0.0-20180912061657-c5d65f63c638 // indirect
-	golang.org/x/text v0.3.0 // indirect
+	golang.org/x/text v0.3.2 // indirect
 )

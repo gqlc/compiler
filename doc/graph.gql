@@ -1,0 +1,17 @@
+"Node represents a node."
+interface Node @experimental {
+    "id uniquely identifies the node."
+    id: ID! @n(o: "p")
+}
+
+"Connection represents a set of edges, which are meant to be paginated."
+interface Connection {
+    "total returns the total number of edges."
+    total: Int
+
+    "edges contains the current page of edges."
+    edges: [Node]
+
+    "hasNextPage tells if there exists more edges."
+    hasNextPage: Boolean
+}

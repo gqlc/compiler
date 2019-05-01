@@ -19,15 +19,17 @@ func TestMain(m *testing.M) {
 		"add":     func(a, b int) int { return a + b },
 		"Title":   strings.Title,
 		"ToLower": strings.ToLower,
-		"ToMembers": func(t ast.Expr) (mems []string) {
+		"ToMembers": func(docName string, t ast.Expr) (mems []string) {
 			unt := t.(*ast.UnionType)
 			for _, mem := range unt.Members {
-				mems = append(mems, mem.Name)
+				mems = append(mems, getName(docName, mem))
 			}
 			return
 		},
 		"ToFieldData": ToFieldData,
 		"ToObjData":   ToObjData,
+		"GetName":     getName,
+		"IsImported":  func(s string) bool { return strings.Contains(s, ".") },
 		"Trim":        func(s string) string { return strings.Trim(strings.TrimSpace(s), "\"") },
 		"PrintDir": func(d *ast.DirectiveLit) string {
 			var s strings.Builder
@@ -35,6 +37,8 @@ func TestMain(m *testing.M) {
 			s.WriteString(d.Name)
 
 			if d.Args == nil {
+				return s.String()
+			} else if len(d.Args.Args) == 0 {
 				return s.String()
 			}
 
@@ -202,7 +206,7 @@ func TestFieldListTmpl(t *testing.T) {
 				return
 			}
 
-			fieldList := doc.Types[0].Specs[0].(*ast.TypeSpec).Type.(*ast.ObjectType).Fields
+			fieldList := doc.Types[0].Spec.(*ast.TypeSpec).Type.(*ast.ObjectType).Fields
 
 			var b bytes.Buffer
 			err = fieldListTmpl.Execute(&b, fieldList)

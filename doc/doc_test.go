@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	goldInFile  = "test.gql"
-	goldOutFile = "test.md"
+	goldImpInFile = "graph.gql"
+	goldInFile    = "test.gql"
+	goldOutFile   = "test.md"
 )
 
 type testCtx struct {
@@ -36,6 +37,11 @@ func TestGenerator_Generate(t *testing.T) {
 	}
 
 	// Read in golden files
+	depGqlFile, err := ioutil.ReadFile(filepath.Join(wd, goldImpInFile))
+	if err != nil {
+		t.Errorf("unexpected error when reading %s file: %s", goldImpInFile, err)
+		return
+	}
 	gqlFile, err := ioutil.ReadFile(filepath.Join(wd, goldInFile))
 	if err != nil {
 		t.Errorf("unexpected error when reading %s file: %s", goldInFile, err)
@@ -47,11 +53,27 @@ func TestGenerator_Generate(t *testing.T) {
 		return
 	}
 
-	// Parse input file
-	doc, err := parser.ParseDoc(token.NewDocSet(), goldInFile, bytes.NewReader(gqlFile), 0)
+	// Parse input files
+	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"graph": bytes.NewReader(depGqlFile), "test": bytes.NewReader(gqlFile)}, 0)
 	if err != nil {
 		t.Errorf("unexpected error when parsing %s file: %s", goldInFile, err)
 		return
+	}
+	docs, err = compiler.ReduceImports(docs)
+	if err != nil {
+		t.Errorf("unexpected error when import reducing %s file: %s", goldInFile, err)
+		return
+	}
+	if len(docs) != 1 {
+		t.Fail()
+		return
+	}
+	doc := docs[0]
+	for _, tg := range doc.Types {
+		if tg == nil {
+			t.Fail()
+			return
+		}
 	}
 
 	// Run generator
@@ -80,5 +102,43 @@ func TestGenerator_Generate(t *testing.T) {
 
 		line++
 		col++
+	}
+}
+
+func TestComp(t *testing.T) {
+	// Get working directory
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("unexpected error when getting wd: %s", err)
+		return
+	}
+
+	// Read in golden files
+	depGqlFile, err := ioutil.ReadFile(filepath.Join(wd, goldImpInFile))
+	if err != nil {
+		t.Errorf("unexpected error when reading %s file: %s", goldImpInFile, err)
+		return
+	}
+	gqlFile, err := ioutil.ReadFile(filepath.Join(wd, goldInFile))
+	if err != nil {
+		t.Errorf("unexpected error when reading %s file: %s", goldInFile, err)
+		return
+	}
+
+	// Parse input files
+	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"test": bytes.NewReader(gqlFile), "graph": bytes.NewReader(depGqlFile)}, 0)
+	if err != nil {
+		t.Errorf("unexpected error when parsing %s file: %s", goldInFile, err)
+		return
+	}
+
+	docs, err = compiler.ReduceImports(docs)
+	if err != nil {
+		t.Errorf("unexpected error when import reducing %s file: %s", goldInFile, err)
+		return
+	}
+	if len(docs) != 1 {
+		t.Fail()
+		return
 	}
 }

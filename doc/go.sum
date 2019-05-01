@@ -1,9 +1,7 @@
-github.com/gqlc/compiler v0.0.0-20190329032008-bde479c3b523 h1:DpHXpZWLrNJVyFQlfDwI2bkLgAxcmJ962KbAGCTUsOc=
-github.com/gqlc/compiler v0.0.0-20190329032008-bde479c3b523/go.mod h1:k3iUHVCLlyhHm9iqfOmvUrbGt93UqePQabWSwSWjAOY=
-github.com/gqlc/graphql v0.0.0-20190328212309-1e25e1b43103 h1:il/QepgKjVfzqfjrYIYlZd6KQPpwcDyPzOr5eFlruYE=
-github.com/gqlc/graphql v0.0.0-20190328212309-1e25e1b43103/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
-github.com/gqlc/graphql v0.0.0-20190328224916-5b9bb18a4a88 h1:aIKtZ/Ap9mELz2O2TcotU2b1w0AkxOpwcbIGqJTa+3I=
-github.com/gqlc/graphql v0.0.0-20190328224916-5b9bb18a4a88/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
+github.com/gqlc/compiler v0.0.0-20190501021318-f96b6f4d97c0 h1:HJd18etr9rLmHr44yxVvGIjqclBt+V/iqL7DgH++PlU=
+github.com/gqlc/compiler v0.0.0-20190501021318-f96b6f4d97c0/go.mod h1:5xYHacxZqw+Rw8kFNwvGA1/5PSpAp/j25nBoEdjhL8Q=
+github.com/gqlc/graphql v0.0.0-20190428015357-5328d05da0ee h1:jbuGt22Cm0Uomlozf6s1yPr6Zd9O+UGRPYaf+oph7aA=
+github.com/gqlc/graphql v0.0.0-20190428015357-5328d05da0ee/go.mod h1:JfknY73H7DXow76NPKQvvDbp0BiMZnRLyfqgY1UVXV4=
 github.com/russross/blackfriday v2.0.0+incompatible h1:cBXrhZNUf9C+La9/YpS+UHpUT8YD6Td9ZMSU9APFcsk=
 github.com/russross/blackfriday v2.0.0+incompatible/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
 github.com/shurcooL/sanitized_anchor_name v1.0.0 h1:PdmoCO6wvbs+7yrJyMORt4/BmY5IYyJwS/kOiWx8mHo=
@@ -20,5 +18,6 @@ gitlab.com/golang-commonmark/puny v0.0.0-20180912090636-2cd490539afe h1:5kUPFAF5
 gitlab.com/golang-commonmark/puny v0.0.0-20180912090636-2cd490539afe/go.mod h1:P9LSM1KVzrIstFgUaveuwiAm8PK5VTB3yJEU8kqlbrU=
 gitlab.com/opennota/wd v0.0.0-20180912061657-c5d65f63c638 h1:uPZaMiz6Sz0PZs3IZJWpU5qHKGNy///1pacZC9txiUI=
 gitlab.com/opennota/wd v0.0.0-20180912061657-c5d65f63c638/go.mod h1:EGRJaqe2eO9XGmFtQCvV3Lm9NLico3UhFwUpCG/+mVU=
-golang.org/x/text v0.3.0 h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=
-golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
+golang.org/x/text v0.3.2 h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=
+golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=
+golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
