@@ -13,10 +13,12 @@ import (
 // any language desired.
 //
 type CodeGenerator interface {
-	// Generate should handle multiple schemas in a single file.
+	// Generate handles converting a GraphQL Document to a scaffolded source code.
+	// Any imported types referenced in the Document are concatenated to its Types slice.
+	//
 	Generate(ctx context.Context, doc *ast.Document, opts string) error
 
-	// GenerateAll should handle multiple schemas.
+	// GenerateAll
 	GenerateAll(ctx context.Context, docs []*ast.Document, opts string) error
 }
 
