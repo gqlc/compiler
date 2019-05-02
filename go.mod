@@ -1,3 +1,3 @@
 module github.com/gqlc/compiler
 
-require github.com/gqlc/graphql v0.0.0-20190502021106-a7a406483a2c
+require github.com/gqlc/graphql v0.0.0-20190502232319-a2446166b76d
