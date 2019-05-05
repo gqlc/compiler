@@ -1,10 +1,8 @@
 language: go
-go:
-- '1.11'
-- tip
 
-env:
-  - GO111MODULE=on
+go:
+  - '1.12'
+  - tip
 
 git:
   depth: 1
@@ -14,4 +12,6 @@ script:
   - diff -u <(echo -n) <(gofmt -d .)
   - go vet ./...
   - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
-  - for dir in ./*/; do cd $dir; diff -u <(echo -n) <(gofmt -d .); go vet ./...; go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...; bash <(curl -s https://codecov.io/bash); cd ../..; done
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
