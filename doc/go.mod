@@ -1,7 +1,7 @@
 module github.com/gqlc/compiler/doc
 
 require (
-	github.com/gqlc/compiler v0.0.0-20190505030032-2f99802d4194
+	github.com/gqlc/compiler v0.0.0-20190505040904-0a17f28843e0
 	github.com/gqlc/graphql v0.0.0-20190505012431-28f53297277f
 	github.com/russross/blackfriday v2.0.0+incompatible // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect

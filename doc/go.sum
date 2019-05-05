@@ -1,7 +1,7 @@
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
-github.com/gqlc/compiler v0.0.0-20190505030032-2f99802d4194 h1:fTBPlW6J0dbsQJIwlSK12q3vzthQPKctHeDMabI5lgY=
-github.com/gqlc/compiler v0.0.0-20190505030032-2f99802d4194/go.mod h1:dg028Buh+wNW8yvZ5ggSZDqw49smW4ZDN77FrGOFb/g=
+github.com/gqlc/compiler v0.0.0-20190505040904-0a17f28843e0 h1:xBJB/9i2nkd5psrlU1yWZUila0vMhEptV2+c+z9ogOU=
+github.com/gqlc/compiler v0.0.0-20190505040904-0a17f28843e0/go.mod h1:dg028Buh+wNW8yvZ5ggSZDqw49smW4ZDN77FrGOFb/g=
 github.com/gqlc/graphql v0.0.0-20190505012431-28f53297277f h1:kWlzasTubkk+zY6P3MPSbQTgZOx6MLHg0NCor8zbDkE=
 github.com/gqlc/graphql v0.0.0-20190505012431-28f53297277f/go.mod h1:jhO1277h2Dw3FA30x14W//NkRmU+7cZxb3S+Vls1bsM=
 github.com/russross/blackfriday v2.0.0+incompatible h1:cBXrhZNUf9C+La9/YpS+UHpUT8YD6Td9ZMSU9APFcsk=
