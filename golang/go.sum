@@ -1,8 +1,0 @@
-github.com/Zaba505/gqlc v0.0.0-20181218171234-b69d19cefdf6 h1:TsZcrzA7fzkfleiE1M15m3GTBP+1pN7j84wCevl1CyI=
-github.com/Zaba505/gqlc v0.0.0-20181218171234-b69d19cefdf6/go.mod h1:tLekfHRfRCO8CV5qbXqdraCrvhH8+ftqjM0o4NnHBnE=
-github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
-github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
-github.com/gqlc/graphql v0.0.0-20181224042329-5990952e1bf6 h1:o8M983H/gkUMb/GtKIGn3BVPKLURRz9OKlboE6CJGcA=
-github.com/gqlc/graphql v0.0.0-20181224042329-5990952e1bf6/go.mod h1:2hk1vC8Py/nF1Ftobzm8nFfbLj0DtJ0FYoRuWqtCmK4=
-github.com/gqlc/graphql v0.0.0-20190505012431-28f53297277f h1:kWlzasTubkk+zY6P3MPSbQTgZOx6MLHg0NCor8zbDkE=
-github.com/gqlc/graphql v0.0.0-20190505012431-28f53297277f/go.mod h1:jhO1277h2Dw3FA30x14W//NkRmU+7cZxb3S+Vls1bsM=
