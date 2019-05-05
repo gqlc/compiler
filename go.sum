@@ -1,4 +1,4 @@
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
-github.com/gqlc/graphql v0.0.0-20190505012431-28f53297277f h1:kWlzasTubkk+zY6P3MPSbQTgZOx6MLHg0NCor8zbDkE=
-github.com/gqlc/graphql v0.0.0-20190505012431-28f53297277f/go.mod h1:jhO1277h2Dw3FA30x14W//NkRmU+7cZxb3S+Vls1bsM=
+github.com/gqlc/graphql v0.1.0 h1:QxILkS6Mh6sSqzZpQHsWTgE8rV/iNzjZ9QQZpwekBu0=
+github.com/gqlc/graphql v0.1.0/go.mod h1:jhO1277h2Dw3FA30x14W//NkRmU+7cZxb3S+Vls1bsM=
