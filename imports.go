@@ -413,8 +413,6 @@ func mergeExprs(o, n interface{}) (e interface{}) {
 	return
 }
 
-const selExprTmpl = "%s.%s"
-
 func addTypes(n *node, typeMap map[string]*ast.TypeDecl, add func(string, *ast.TypeDecl, map[string]*ast.TypeDecl) bool) (err error) {
 	for _, tg := range n.Types {
 		var ts *ast.TypeSpec
@@ -427,9 +425,9 @@ func addTypes(n *node, typeMap map[string]*ast.TypeDecl, add func(string, *ast.T
 			panic("unknown spec")
 		}
 
-		name := ts.Name.Name
-		if ts.Name == nil {
-			name = "schema"
+		name := "schema"
+		if ts.Name != nil {
+			name = ts.Name.Name
 		}
 
 		// Add type decl
