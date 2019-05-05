@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/gqlc/graphql/ast"
 	"io"
-	"os"
-	"path/filepath"
 )
 
 // Generator provides a simple API for creating a code generator for
@@ -20,29 +18,14 @@ type Generator interface {
 }
 
 // GeneratorContext represents the directory to which
-// the CodeGenerator is to write and other information
-// about the context in which the Generator runs.
+// the Generator is to write to.
+//
 type GeneratorContext interface {
 	// Open opens a file in the GeneratorContext (i.e. directory).
 	Open(filename string) (io.WriteCloser, error)
 }
 
-type genContext struct {
-	dir string
-}
-
-func (ctx *genContext) Open(filename string) (io.WriteCloser, error) {
-	return os.Open(filepath.Join(ctx.dir, filename))
-}
-
 const genCtx = "genCtx"
-
-// WithDir returns a prepared context.Context
-// with a GeneratorContext rooted at the provided directory.
-//
-func WithDir(ctx context.Context, dir string) context.Context {
-	return context.WithValue(ctx, genCtx, &genContext{dir: dir})
-}
 
 // WithContext returns a prepared context.Context
 // with the given GeneratorContext.
