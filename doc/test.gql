@@ -1,4 +1,4 @@
-import "graph.gql"
+@import(paths: ["graph.gql"])
 
 "Test Schema"
 schema {
@@ -34,12 +34,12 @@ type Echo @a(a: 1) {
 }
 
 "Result represents a search result."
-type Result implements graph.Connection @a(a: "a") @b(b: 2, c: 1.4) {
+type Result implements Connection @a(a: "a") @b(b: 2, c: 1.4) {
     "total yields the total number of search results."
     total: Int
 
     "edges contains the search results."
-    edges: [graph.Node]
+    edges: [Node]
 
     "hasNextPage tells if there are more search results."
     hasNextPage: Boolean

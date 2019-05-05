@@ -13,8 +13,3 @@ type Generator struct{}
 func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts string) error {
 	return nil
 }
-
-// GenerateAll generates Go code for all schemas found within all the given documents.
-func (gen *Generator) GenerateAll(ctx context.Context, docs []*ast.Document, opts string) error {
-	return nil
-}

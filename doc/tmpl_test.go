@@ -16,21 +16,15 @@ var testTmpl = template.New("testTmpl")
 
 func TestMain(m *testing.M) {
 	testTmpl.Funcs(map[string]interface{}{
-		"add":     func(a, b int) int { return a + b },
-		"Title":   strings.Title,
-		"ToLower": strings.ToLower,
-		"ToMembers": func(docName string, t ast.Expr) (mems []string) {
-			unt := t.(*ast.UnionType)
-			for _, mem := range unt.Members {
-				mems = append(mems, getName(docName, mem))
-			}
-			return
-		},
+		"add":         func(a, b int) int { return a + b },
+		"Title":       strings.Title,
+		"ToLower":     strings.ToLower,
 		"ToFieldData": ToFieldData,
 		"ToObjData":   ToObjData,
-		"GetName":     getName,
-		"IsImported":  func(s string) bool { return strings.Contains(s, ".") },
-		"Trim":        func(s string) string { return strings.Trim(strings.TrimSpace(s), "\"") },
+		"ToMembers": func(i interface{}) []*ast.Ident {
+			return i.(*ast.TypeSpec_Union).Union.Members
+		},
+		"Trim": func(s string) string { return strings.Trim(strings.TrimSpace(s), "\"") },
 		"PrintDir": func(d *ast.DirectiveLit) string {
 			var s strings.Builder
 			s.WriteRune('@')
@@ -48,10 +42,10 @@ func TestMain(m *testing.M) {
 				s.WriteString(arg.Name.Name)
 				s.WriteString(": ")
 				switch v := arg.Value.(type) {
-				case *ast.BasicLit:
-					s.WriteString(v.Value)
-				case *ast.ListLit:
-				case *ast.ObjLit:
+				case *ast.Arg_BasicLit:
+					s.WriteString(v.BasicLit.Value)
+				case *ast.Arg_CompositeLit:
+					// TODO: Print composite literal
 				}
 
 				if i < aLen-1 {
@@ -206,7 +200,7 @@ func TestFieldListTmpl(t *testing.T) {
 				return
 			}
 
-			fieldList := doc.Types[0].Spec.(*ast.TypeSpec).Type.(*ast.ObjectType).Fields
+			fieldList := doc.Types[0].Spec.(*ast.TypeDecl_TypeSpec).TypeSpec.Type.(*ast.TypeSpec_Object).Object.Fields
 
 			var b bytes.Buffer
 			err = fieldListTmpl.Execute(&b, fieldList)

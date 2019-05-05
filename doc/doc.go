@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/gqlc/compiler"
 	"github.com/gqlc/graphql/ast"
 	"gitlab.com/golang-commonmark/markdown"
@@ -26,21 +25,15 @@ type Generator struct {
 func (gen *Generator) initTmpls() {
 	gen.md = markdown.New()
 	docTmpl.Funcs(map[string]interface{}{
-		"add":     func(a, b int) int { return a + b },
-		"Title":   strings.Title,
-		"ToLower": strings.ToLower,
-		"ToMembers": func(docName string, t ast.Expr) (mems []string) {
-			unt := t.(*ast.UnionType)
-			for _, mem := range unt.Members {
-				mems = append(mems, getName(docName, mem))
-			}
-			return
-		},
+		"add":         func(a, b int) int { return a + b },
+		"Title":       strings.Title,
+		"ToLower":     strings.ToLower,
 		"ToFieldData": ToFieldData,
 		"ToObjData":   ToObjData,
-		"GetName":     getName,
-		"IsImported":  func(s string) bool { return strings.Contains(s, ".") },
-		"Trim":        func(s string) string { return strings.Trim(strings.TrimSpace(s), "\"") },
+		"ToMembers": func(i interface{}) []*ast.Ident {
+			return i.(*ast.TypeSpec_Union).Union.Members
+		},
+		"Trim": func(s string) string { return strings.Trim(strings.TrimSpace(s), "\"") },
 		"PrintDir": func(d *ast.DirectiveLit) string {
 			var s strings.Builder
 			s.WriteRune('@')
@@ -58,10 +51,10 @@ func (gen *Generator) initTmpls() {
 				s.WriteString(arg.Name.Name)
 				s.WriteString(": ")
 				switch v := arg.Value.(type) {
-				case *ast.BasicLit:
-					s.WriteString(v.Value)
-				case *ast.ListLit:
-				case *ast.ObjLit:
+				case *ast.Arg_BasicLit:
+					s.WriteString(v.BasicLit.Value)
+				case *ast.Arg_CompositeLit:
+					// TODO: Print composite literal
 				}
 
 				if i < aLen-1 {
@@ -108,11 +101,6 @@ func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts stri
 	tmplData := extractTypes(doc)
 	if optData.Title != "" {
 		tmplData.Title = optData.Title
-	}
-	for _, ig := range doc.Imports {
-		for _, is := range ig.Specs {
-			tmplData.Imports = append(tmplData.Imports, strings.Trim(is.Path.Value, "\""))
-		}
 	}
 
 	// Lexicographically sort types from document in mdData
@@ -165,17 +153,6 @@ func (gen *Generator) Generate(ctx context.Context, doc *ast.Document, opts stri
 	return
 }
 
-// GenerateAll generates documentation for all the given documents.
-func (gen *Generator) GenerateAll(ctx context.Context, docs []*ast.Document, opts string) (err error) {
-	for _, doc := range docs {
-		err = gen.Generate(ctx, doc, opts)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
 func extractTypes(doc *ast.Document) (tmplData *mdData) {
 	tmplData = &mdData{
 		DocName: doc.Name[:len(doc.Name)-len(filepath.Ext(doc.Name))],
@@ -183,39 +160,28 @@ func extractTypes(doc *ast.Document) (tmplData *mdData) {
 	}
 
 	for _, gd := range doc.Types {
-		ts, ok := gd.Spec.(*ast.TypeSpec)
+		ts, ok := gd.Spec.(*ast.TypeDecl_TypeSpec)
 		if !ok {
 			continue
 		}
 
-		var name string
-		switch v := ts.Name.(type) {
-		case *ast.Ident:
-			name = doc.Name
-		case *ast.SelectorExpr:
-			name = v.X.(*ast.Ident).Name
-		}
-		if _, ok := ts.Type.(*ast.SchemaType); name != doc.Name && !ok {
-			continue
-		}
-
-		switch ts.Type.(type) {
-		case *ast.SchemaType:
-			tmplData.Schema = ts
-		case *ast.ScalarType:
-			tmplData.Scalars = append(tmplData.Scalars, ts)
-		case *ast.ObjectType:
-			tmplData.Objects = append(tmplData.Objects, ts)
-		case *ast.InterfaceType:
-			tmplData.Interfaces = append(tmplData.Interfaces, ts)
-		case *ast.UnionType:
-			tmplData.Unions = append(tmplData.Unions, ts)
-		case *ast.EnumType:
-			tmplData.Enums = append(tmplData.Enums, ts)
-		case *ast.InputType:
-			tmplData.Inputs = append(tmplData.Inputs, ts)
-		case *ast.DirectiveType:
-			tmplData.Directives = append(tmplData.Directives, ts)
+		switch ts.TypeSpec.Type.(type) {
+		case *ast.TypeSpec_Schema:
+			tmplData.Schema = ts.TypeSpec
+		case *ast.TypeSpec_Scalar:
+			tmplData.Scalars = append(tmplData.Scalars, ts.TypeSpec)
+		case *ast.TypeSpec_Object:
+			tmplData.Objects = append(tmplData.Objects, ts.TypeSpec)
+		case *ast.TypeSpec_Interface:
+			tmplData.Interfaces = append(tmplData.Interfaces, ts.TypeSpec)
+		case *ast.TypeSpec_Union:
+			tmplData.Unions = append(tmplData.Unions, ts.TypeSpec)
+		case *ast.TypeSpec_Enum:
+			tmplData.Enums = append(tmplData.Enums, ts.TypeSpec)
+		case *ast.TypeSpec_Input:
+			tmplData.Inputs = append(tmplData.Inputs, ts.TypeSpec)
+		case *ast.TypeSpec_Directive:
+			tmplData.Directives = append(tmplData.Directives, ts.TypeSpec)
 		}
 	}
 
@@ -224,9 +190,9 @@ func extractTypes(doc *ast.Document) (tmplData *mdData) {
 		return
 	}
 
-	for _, op := range tmplData.Schema.Type.(*ast.SchemaType).Fields.List {
+	for _, op := range tmplData.Schema.Type.(*ast.TypeSpec_Schema).Schema.RootOps.List {
 		for i, obj := range tmplData.Objects {
-			name := getName(tmplData.DocName, obj.Name)
+			name := obj.Name.Name
 			if strings.ToLower(name) != op.Name.Name {
 				continue
 			}
@@ -234,22 +200,6 @@ func extractTypes(doc *ast.Document) (tmplData *mdData) {
 			tmplData.Objects = append(tmplData.Objects[:i], tmplData.Objects[i+1:]...)
 			tmplData.RootTypes = append(tmplData.RootTypes, obj)
 		}
-	}
-	return
-}
-
-func getName(docName string, e ast.Expr) (name string) {
-	switch v := e.(type) {
-	case *ast.Ident:
-		name = v.Name
-	case *ast.SelectorExpr:
-		x := v.X.(*ast.Ident).Name
-		if x == docName {
-			name = v.Sel.Name
-			break
-		}
-
-		name = fmt.Sprintf("%s.%s", x, v.Sel.Name)
 	}
 	return
 }

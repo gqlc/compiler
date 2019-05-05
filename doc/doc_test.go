@@ -54,7 +54,7 @@ func TestGenerator_Generate(t *testing.T) {
 	}
 
 	// Parse input files
-	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"graph": bytes.NewReader(depGqlFile), "test": bytes.NewReader(gqlFile)}, 0)
+	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"graph.gql": bytes.NewReader(depGqlFile), "test": bytes.NewReader(gqlFile)}, 0)
 	if err != nil {
 		t.Errorf("unexpected error when parsing %s file: %s", goldInFile, err)
 		return
@@ -126,7 +126,7 @@ func TestComp(t *testing.T) {
 	}
 
 	// Parse input files
-	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"test": bytes.NewReader(gqlFile), "graph": bytes.NewReader(depGqlFile)}, 0)
+	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"test": bytes.NewReader(gqlFile), "graph.gql": bytes.NewReader(depGqlFile)}, 0)
 	if err != nil {
 		t.Errorf("unexpected error when parsing %s file: %s", goldInFile, err)
 		return
