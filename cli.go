@@ -33,7 +33,7 @@ type CommandLine interface {
 	//		Case more than three:
 	//			Same as Case three but ignores extras
 	//
-	RegisterGenerator(gen CodeGenerator, flagDetails ...string)
+	RegisterGenerator(gen Generator, flagDetails ...string)
 
 	// AllowPlugins enables "plugins". If a command-line flag ends with "_out"
 	// but does not match any register code generator, the compiler will

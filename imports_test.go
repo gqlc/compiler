@@ -11,17 +11,24 @@ import (
 
 func TestCreateImportTries(t *testing.T) {
 	// Create test docs
-	docs := []*ast.Document{
+	testData := []struct {
+		Name  string
+		Value *ast.Arg_CompositeLit
+	}{
 		{
 			Name: "a",
-			Imports: []*ast.ImportDecl{
-				{
-					Specs: []*ast.ImportSpec{
-						{
-							Name: &ast.Ident{Name: "e"},
-						},
-						{
-							Name: &ast.Ident{Name: "f"},
+			Value: &ast.Arg_CompositeLit{
+				CompositeLit: &ast.CompositeLit{
+					Value: &ast.CompositeLit_ListLit{
+						ListLit: &ast.ListLit{
+							List: &ast.ListLit_BasicList{
+								BasicList: &ast.ListLit_Basic{
+									Values: []*ast.BasicLit{
+										{Value: "e"},
+										{Value: "f"},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -32,14 +39,18 @@ func TestCreateImportTries(t *testing.T) {
 		},
 		{
 			Name: "c",
-			Imports: []*ast.ImportDecl{
-				{
-					Specs: []*ast.ImportSpec{
-						{
-							Name: &ast.Ident{Name: "g"},
-						},
-						{
-							Name: &ast.Ident{Name: "h"},
+			Value: &ast.Arg_CompositeLit{
+				CompositeLit: &ast.CompositeLit{
+					Value: &ast.CompositeLit_ListLit{
+						ListLit: &ast.ListLit{
+							List: &ast.ListLit_BasicList{
+								BasicList: &ast.ListLit_Basic{
+									Values: []*ast.BasicLit{
+										{Value: "g"},
+										{Value: "h"},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -47,14 +58,18 @@ func TestCreateImportTries(t *testing.T) {
 		},
 		{
 			Name: "d",
-			Imports: []*ast.ImportDecl{
-				{
-					Specs: []*ast.ImportSpec{
-						{
-							Name: &ast.Ident{Name: "i"},
-						},
-						{
-							Name: &ast.Ident{Name: "j"},
+			Value: &ast.Arg_CompositeLit{
+				CompositeLit: &ast.CompositeLit{
+					Value: &ast.CompositeLit_ListLit{
+						ListLit: &ast.ListLit{
+							List: &ast.ListLit_BasicList{
+								BasicList: &ast.ListLit_Basic{
+									Values: []*ast.BasicLit{
+										{Value: "i"},
+										{Value: "j"},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -68,14 +83,18 @@ func TestCreateImportTries(t *testing.T) {
 		},
 		{
 			Name: "g",
-			Imports: []*ast.ImportDecl{
-				{
-					Specs: []*ast.ImportSpec{
-						{
-							Name: &ast.Ident{Name: "e"},
-						},
-						{
-							Name: &ast.Ident{Name: "f"},
+			Value: &ast.Arg_CompositeLit{
+				CompositeLit: &ast.CompositeLit{
+					Value: &ast.CompositeLit_ListLit{
+						ListLit: &ast.ListLit{
+							List: &ast.ListLit_BasicList{
+								BasicList: &ast.ListLit_Basic{
+									Values: []*ast.BasicLit{
+										{Value: "e"},
+										{Value: "f"},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -86,14 +105,18 @@ func TestCreateImportTries(t *testing.T) {
 		},
 		{
 			Name: "i",
-			Imports: []*ast.ImportDecl{
-				{
-					Specs: []*ast.ImportSpec{
-						{
-							Name: &ast.Ident{Name: "e"},
-						},
-						{
-							Name: &ast.Ident{Name: "h"},
+			Value: &ast.Arg_CompositeLit{
+				CompositeLit: &ast.CompositeLit{
+					Value: &ast.CompositeLit_ListLit{
+						ListLit: &ast.ListLit{
+							List: &ast.ListLit_BasicList{
+								BasicList: &ast.ListLit_Basic{
+									Values: []*ast.BasicLit{
+										{Value: "e"},
+										{Value: "h"},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -101,19 +124,42 @@ func TestCreateImportTries(t *testing.T) {
 		},
 		{
 			Name: "j",
-			Imports: []*ast.ImportDecl{
-				{
-					Specs: []*ast.ImportSpec{
-						{
-							Name: &ast.Ident{Name: "h"},
-						},
-						{
-							Name: &ast.Ident{Name: "f"},
+			Value: &ast.Arg_CompositeLit{
+				CompositeLit: &ast.CompositeLit{
+					Value: &ast.CompositeLit_ListLit{
+						ListLit: &ast.ListLit{
+							List: &ast.ListLit_BasicList{
+								BasicList: &ast.ListLit_Basic{
+									Values: []*ast.BasicLit{
+										{Value: "h"},
+										{Value: "f"},
+									},
+								},
+							},
 						},
 					},
 				},
 			},
 		},
+	}
+
+	docs := make([]*ast.Document, len(testData))
+	for i, data := range testData {
+		docs[i] = &ast.Document{
+			Name: data.Name,
+		}
+		if data.Value == nil {
+			continue
+		}
+
+		docs[i].Directives = []*ast.DirectiveLit{
+			{
+				Name: "import",
+				Args: &ast.CallExpr{
+					Args: []*ast.Arg{{Value: data.Value}},
+				},
+			},
+		}
 	}
 
 	// Initialize nodes and dMap for createImportTries
@@ -185,30 +231,62 @@ func TestCreateImportTries(t *testing.T) {
 }
 
 func TestImportCycle(t *testing.T) {
-	docs := []*ast.Document{
+	// Create test docs
+	testData := []struct {
+		Name  string
+		Value *ast.Arg_CompositeLit
+	}{
 		{
 			Name: "a",
-			Imports: []*ast.ImportDecl{
-				{Specs: []*ast.ImportSpec{
-					{
-						Name: &ast.Ident{Name: "b"},
-					},
-				},
-				},
-			},
-		},
-		{
-			Name: "b",
-			Imports: []*ast.ImportDecl{
-				{
-					Specs: []*ast.ImportSpec{
-						{
-							Name: &ast.Ident{Name: "a"},
+			Value: &ast.Arg_CompositeLit{
+				CompositeLit: &ast.CompositeLit{
+					Value: &ast.CompositeLit_ListLit{
+						ListLit: &ast.ListLit{
+							List: &ast.ListLit_BasicList{
+								BasicList: &ast.ListLit_Basic{
+									Values: []*ast.BasicLit{
+										{Value: "b"},
+									},
+								},
+							},
 						},
 					},
 				},
 			},
 		},
+		{
+			Name: "b",
+			Value: &ast.Arg_CompositeLit{
+				CompositeLit: &ast.CompositeLit{
+					Value: &ast.CompositeLit_ListLit{
+						ListLit: &ast.ListLit{
+							List: &ast.ListLit_BasicList{
+								BasicList: &ast.ListLit_Basic{
+									Values: []*ast.BasicLit{
+										{Value: "a"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	docs := make([]*ast.Document, len(testData))
+	for i, data := range testData {
+		docs[i] = &ast.Document{
+			Name: data.Name,
+			Directives: []*ast.DirectiveLit{
+				{
+					Name: "import",
+					Args: &ast.CallExpr{
+						Args: []*ast.Arg{{Value: data.Value}},
+					},
+				},
+			},
+		}
 	}
 
 	// Initialize nodes and dMap for createImportTries
@@ -231,37 +309,44 @@ func TestImportCycle(t *testing.T) {
 
 func TestMergeTypes(t *testing.T) {
 	testCases := []struct {
-		Name  string
-		Old   ast.Spec
-		New   ast.Spec
-		check func(*ast.GenDecl) bool
+		Name     string
+		Old, New *ast.TypeDecl
+		check    func(*ast.TypeDecl) bool
 	}{
 		// Ext -> Spec
 		{
 			Name: "Ext->Spec:schema",
-			New: &ast.TypeSpec{
-				Name: &ast.Ident{Name: "test"},
-				Type: &ast.SchemaType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
-				Doc:  new(ast.DocGroup),
-			},
-			Old: &ast.TypeExtensionSpec{
-				Type: &ast.TypeSpec{
-					Type: &ast.SchemaType{Fields: &ast.FieldList{List: make([]*ast.Field, 20)}},
-					Dirs: make([]*ast.DirectiveLit, 10),
+			New: &ast.TypeDecl{
+				Spec: &ast.TypeDecl_TypeSpec{
+					TypeSpec: &ast.TypeSpec{
+						Name: &ast.Ident{Name: "test"},
+						Type: &ast.TypeSpec_Schema{Schema: &ast.SchemaType{RootOps: &ast.FieldList{List: make([]*ast.Field, 10)}}},
+						Doc:  new(ast.DocGroup),
+					},
 				},
-				Doc: new(ast.DocGroup),
 			},
-			check: func(d *ast.GenDecl) bool {
-				ts, ok := d.Spec.(*ast.TypeSpec)
+			Old: &ast.TypeDecl{
+				Spec: &ast.TypeDecl_TypeExtSpec{
+					TypeExtSpec: &ast.TypeExtensionSpec{
+						Type: &ast.TypeSpec{
+							Type:       &ast.TypeSpec_Schema{Schema: &ast.SchemaType{RootOps: &ast.FieldList{List: make([]*ast.Field, 20)}}},
+							Directives: make([]*ast.DirectiveLit, 10),
+						},
+						Doc: new(ast.DocGroup),
+					},
+				},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				ts, ok := d.Spec.(*ast.TypeDecl_TypeSpec)
 				if !ok {
 					return false
 				}
 
-				if len(ts.Dirs) != 10 {
+				if len(ts.TypeSpec.Directives) != 10 {
 					return false
 				}
 
-				if len(ts.Type.(*ast.SchemaType).Fields.List) != 30 {
+				if len(ts.TypeSpec.Type.(*ast.TypeSpec_Schema).Schema.RootOps.List) != 30 {
 					return false
 				}
 
@@ -270,63 +355,75 @@ func TestMergeTypes(t *testing.T) {
 		},
 		{
 			Name: "Ext->Spec:scalar",
-			New: &ast.TypeSpec{
-				Name: &ast.Ident{Name: "Test"},
-				Type: &ast.ScalarType{Name: &ast.Ident{Name: "Test"}},
-				Doc:  new(ast.DocGroup),
+			New: &ast.TypeDecl{
+				Spec: &ast.TypeDecl_TypeSpec{
+					TypeSpec: &ast.TypeSpec{
+						Name: &ast.Ident{Name: "Test"},
+						Type: &ast.TypeSpec_Scalar{Scalar: &ast.ScalarType{Name: &ast.Ident{Name: "Test"}}},
+						Doc:  new(ast.DocGroup),
+					},
+				},
 			},
-			Old: &ast.TypeExtensionSpec{
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Type: &ast.TypeSpec{
-					Type: &ast.ScalarType{},
-					Dirs: make([]*ast.DirectiveLit, 10),
+					Type:       &ast.TypeSpec_Scalar{Scalar: &ast.ScalarType{}},
+					Directives: make([]*ast.DirectiveLit, 10),
 				},
 				Doc: new(ast.DocGroup),
 			},
-			check: func(d *ast.GenDecl) bool {
-				ts, ok := d.Spec.(*ast.TypeSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				ts, ok := d.Spec.(*ast.TypeDecl_TypeSpec)
 				if !ok {
 					return false
 				}
 
-				return len(ts.Dirs) == 10
+				return len(ts.TypeSpec.Directives) == 10
 			},
 		},
 		{
 			Name: "Ext->Spec:object",
-			New: &ast.TypeSpec{
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
 				Doc:  new(ast.DocGroup),
-				Type: &ast.ObjectType{
-					Impls:  make([]ast.Expr, 10),
-					Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+				Type: &ast.TypeSpec_Object{Object: &ast.ObjectType{
+					Interfaces: make([]*ast.Ident, 10),
+					Fields:     &ast.FieldList{List: make([]*ast.Field, 10)},
 				},
-				Dirs: make([]*ast.DirectiveLit, 5),
+				},
+				Directives: make([]*ast.DirectiveLit, 5),
 			},
-			Old: &ast.TypeExtensionSpec{
+			},
+			},
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Type: &ast.ObjectType{
-						Impls:  make([]ast.Expr, 10),
-						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					Type: &ast.TypeSpec_Object{Object: &ast.ObjectType{
+						Interfaces: make([]*ast.Ident, 10),
+						Fields:     &ast.FieldList{List: make([]*ast.Field, 10)},
 					},
-					Dirs: make([]*ast.DirectiveLit, 5),
+					},
+					Directives: make([]*ast.DirectiveLit, 5),
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				ts, ok := d.Spec.(*ast.TypeSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				ts, ok := d.Spec.(*ast.TypeDecl_TypeSpec)
 				if !ok {
 					return false
 				}
 
-				if len(ts.Dirs) != 10 {
+				if len(ts.TypeSpec.Directives) != 10 {
 					return false
 				}
 
-				obj := ts.Type.(*ast.ObjectType)
-				if len(obj.Impls) != 20 {
+				obj := ts.TypeSpec.Type.(*ast.TypeSpec_Object)
+				if len(obj.Object.Interfaces) != 20 {
 					return false
 				}
-				if len(obj.Fields.List) != 20 {
+				if len(obj.Object.Fields.List) != 20 {
 					return false
 				}
 				return true
@@ -334,341 +431,423 @@ func TestMergeTypes(t *testing.T) {
 		},
 		{
 			Name: "Ext->Spec:interface",
-			New: &ast.TypeSpec{
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
 				Doc:  new(ast.DocGroup),
-				Type: &ast.InterfaceType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
-				Dirs: make([]*ast.DirectiveLit, 5),
+				Type: &ast.TypeSpec_Interface{Interface: &ast.InterfaceType{
+					Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+				}},
+				Directives: make([]*ast.DirectiveLit, 5),
 			},
-			Old: &ast.TypeExtensionSpec{
+			},
+			},
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.InterfaceType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Interface{Interface: &ast.InterfaceType{
+						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				ts, ok := d.Spec.(*ast.TypeSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				ts, ok := d.Spec.(*ast.TypeDecl_TypeSpec)
 				if !ok {
 					return false
 				}
 
-				if len(ts.Dirs) != 10 {
+				if len(ts.TypeSpec.Directives) != 10 {
 					return false
 				}
 
-				obj := ts.Type.(*ast.InterfaceType)
-				return len(obj.Fields.List) == 20
+				obj := ts.TypeSpec.Type.(*ast.TypeSpec_Interface)
+				return len(obj.Interface.Fields.List) == 20
 			},
 		},
 		{
 			Name: "Ext->Spec:enum",
-			New: &ast.TypeSpec{
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
 				Doc:  new(ast.DocGroup),
-				Type: &ast.EnumType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
-				Dirs: make([]*ast.DirectiveLit, 5),
+				Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
+					Values: &ast.FieldList{List: make([]*ast.Field, 10)},
+				}},
+				Directives: make([]*ast.DirectiveLit, 5),
 			},
-			Old: &ast.TypeExtensionSpec{
+			},
+			},
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.EnumType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
+						Values: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				ts, ok := d.Spec.(*ast.TypeSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				ts, ok := d.Spec.(*ast.TypeDecl_TypeSpec)
 				if !ok {
 					return false
 				}
 
-				if len(ts.Dirs) != 10 {
+				if len(ts.TypeSpec.Directives) != 10 {
 					return false
 				}
 
-				obj := ts.Type.(*ast.EnumType)
-				return len(obj.Fields.List) == 20
+				obj := ts.TypeSpec.Type.(*ast.TypeSpec_Enum)
+				return len(obj.Enum.Values.List) == 20
 			},
 		},
 		{
 			Name: "Ext->Spec:union",
-			New: &ast.TypeSpec{
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
 				Doc:  new(ast.DocGroup),
-				Type: &ast.UnionType{Members: make([]ast.Expr, 10)},
-				Dirs: make([]*ast.DirectiveLit, 5),
+				Type: &ast.TypeSpec_Union{Union: &ast.UnionType{
+					Members: make([]*ast.Ident, 10),
+				}},
+				Directives: make([]*ast.DirectiveLit, 5),
 			},
-			Old: &ast.TypeExtensionSpec{
+			},
+			},
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.UnionType{Members: make([]ast.Expr, 10)},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Union{Union: &ast.UnionType{
+						Members: make([]*ast.Ident, 10),
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				ts, ok := d.Spec.(*ast.TypeSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				ts, ok := d.Spec.(*ast.TypeDecl_TypeSpec)
 				if !ok {
 					return false
 				}
 
-				if len(ts.Dirs) != 10 {
+				if len(ts.TypeSpec.Directives) != 10 {
 					return false
 				}
 
-				obj := ts.Type.(*ast.UnionType)
-				return len(obj.Members) == 20
+				obj := ts.TypeSpec.Type.(*ast.TypeSpec_Union)
+				return len(obj.Union.Members) == 20
 			},
 		},
 		{
 			Name: "Ext->Spec:input",
-			New: &ast.TypeSpec{
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
 				Doc:  new(ast.DocGroup),
-				Type: &ast.InputType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
-				Dirs: make([]*ast.DirectiveLit, 5),
+				Type: &ast.TypeSpec_Input{Input: &ast.InputType{
+					Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+				}},
+				Directives: make([]*ast.DirectiveLit, 5),
 			},
-			Old: &ast.TypeExtensionSpec{
+			},
+			},
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.InputType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Input{Input: &ast.InputType{
+						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				ts, ok := d.Spec.(*ast.TypeSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				ts, ok := d.Spec.(*ast.TypeDecl_TypeSpec)
 				if !ok {
 					return false
 				}
 
-				if len(ts.Dirs) != 10 {
+				if len(ts.TypeSpec.Directives) != 10 {
 					return false
 				}
 
-				obj := ts.Type.(*ast.InputType)
-				return len(obj.Fields.List) == 20
+				obj := ts.TypeSpec.Type.(*ast.TypeSpec_Input)
+				return len(obj.Input.Fields.List) == 20
 			},
 		},
 
 		// Ext -> Ext
 		{
 			Name: "Ext->Ext:schema",
-			Old: &ast.TypeExtensionSpec{
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.SchemaType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Schema{Schema: &ast.SchemaType{
+						RootOps: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			New: &ast.TypeExtensionSpec{
+			},
+			},
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.SchemaType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Schema{Schema: &ast.SchemaType{
+						RootOps: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				text, ok := d.Spec.(*ast.TypeExtensionSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				text, ok := d.Spec.(*ast.TypeDecl_TypeExtSpec)
 				if !ok {
 					return false
 				}
 
-				ts := text.Type
-				if len(ts.Dirs) != 10 {
+				ts := text.TypeExtSpec.Type
+				if len(ts.Directives) != 10 {
 					return false
 				}
 
-				v := ts.Type.(*ast.SchemaType)
-				return len(v.Fields.List) == 20
+				v := ts.Type.(*ast.TypeSpec_Schema)
+				return len(v.Schema.RootOps.List) == 20
 			},
 		},
 		{
 			Name: "Ext->Ext:scalar",
-			Old: &ast.TypeExtensionSpec{
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.ScalarType{},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type:       &ast.TypeSpec_Scalar{Scalar: &ast.ScalarType{}},
 				},
 			},
-			New: &ast.TypeExtensionSpec{
+			},
+			},
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.ScalarType{},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type:       &ast.TypeSpec_Scalar{Scalar: &ast.ScalarType{}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				text, ok := d.Spec.(*ast.TypeExtensionSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				text, ok := d.Spec.(*ast.TypeDecl_TypeExtSpec)
 				if !ok {
 					return false
 				}
 
-				ts := text.Type
-				return len(ts.Dirs) == 10
+				ts := text.TypeExtSpec.Type
+				return len(ts.Directives) == 10
 			},
 		},
 		{
 			Name: "Ext->Ext:object",
-			Old: &ast.TypeExtensionSpec{
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.ObjectType{
-						Impls:  make([]ast.Expr, 10),
-						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Object{Object: &ast.ObjectType{
+						Interfaces: make([]*ast.Ident, 10),
+						Fields:     &ast.FieldList{List: make([]*ast.Field, 10)},
+					},
 					},
 				},
 			},
-			New: &ast.TypeExtensionSpec{
+			},
+			},
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.ObjectType{
-						Impls:  make([]ast.Expr, 10),
-						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Object{Object: &ast.ObjectType{
+						Interfaces: make([]*ast.Ident, 10),
+						Fields:     &ast.FieldList{List: make([]*ast.Field, 10)},
+					},
 					},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				text, ok := d.Spec.(*ast.TypeExtensionSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				text, ok := d.Spec.(*ast.TypeDecl_TypeExtSpec)
 				if !ok {
 					return false
 				}
 
-				ts := text.Type
-				if len(ts.Dirs) != 10 {
+				ts := text.TypeExtSpec.Type
+				if len(ts.Directives) != 10 {
 					return false
 				}
 
-				v := ts.Type.(*ast.ObjectType)
-				if len(v.Impls) != 20 {
+				v := ts.Type.(*ast.TypeSpec_Object)
+				if len(v.Object.Interfaces) != 20 {
 					return false
 				}
-				return len(v.Fields.List) == 20
+				return len(v.Object.Fields.List) == 20
 			},
 		},
 		{
 			Name: "Ext->Ext:interface",
-			Old: &ast.TypeExtensionSpec{
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.InterfaceType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Interface{Interface: &ast.InterfaceType{
+						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			New: &ast.TypeExtensionSpec{
+			},
+			},
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.InterfaceType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Interface{Interface: &ast.InterfaceType{
+						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				text, ok := d.Spec.(*ast.TypeExtensionSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				text, ok := d.Spec.(*ast.TypeDecl_TypeExtSpec)
 				if !ok {
 					return false
 				}
 
-				ts := text.Type
-				if len(ts.Dirs) != 10 {
+				ts := text.TypeExtSpec.Type
+				if len(ts.Directives) != 10 {
 					return false
 				}
 
-				v := ts.Type.(*ast.InterfaceType)
-				return len(v.Fields.List) == 20
+				v := ts.Type.(*ast.TypeSpec_Interface)
+				return len(v.Interface.Fields.List) == 20
 			},
 		},
 		{
 			Name: "Ext->Ext:enum",
-			Old: &ast.TypeExtensionSpec{
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.EnumType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
+						Values: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			New: &ast.TypeExtensionSpec{
+			},
+			},
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.EnumType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
+						Values: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				text, ok := d.Spec.(*ast.TypeExtensionSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				text, ok := d.Spec.(*ast.TypeDecl_TypeExtSpec)
 				if !ok {
 					return false
 				}
 
-				ts := text.Type
-				if len(ts.Dirs) != 10 {
+				ts := text.TypeExtSpec.Type
+				if len(ts.Directives) != 10 {
 					return false
 				}
 
-				v := ts.Type.(*ast.EnumType)
-				return len(v.Fields.List) == 20
+				v := ts.Type.(*ast.TypeSpec_Enum)
+				return len(v.Enum.Values.List) == 20
 			},
 		},
 		{
 			Name: "Ext->Ext:union",
-			Old: &ast.TypeExtensionSpec{
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.UnionType{Members: make([]ast.Expr, 10)},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Union{Union: &ast.UnionType{
+						Members: make([]*ast.Ident, 10),
+					}},
 				},
 			},
-			New: &ast.TypeExtensionSpec{
+			},
+			},
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.UnionType{Members: make([]ast.Expr, 10)},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Union{Union: &ast.UnionType{
+						Members: make([]*ast.Ident, 10),
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				text, ok := d.Spec.(*ast.TypeExtensionSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				text, ok := d.Spec.(*ast.TypeDecl_TypeExtSpec)
 				if !ok {
 					return false
 				}
 
-				ts := text.Type
-				if len(ts.Dirs) != 10 {
+				ts := text.TypeExtSpec.Type
+				if len(ts.Directives) != 10 {
 					return false
 				}
 
-				v := ts.Type.(*ast.UnionType)
-				return len(v.Members) == 20
+				v := ts.Type.(*ast.TypeSpec_Union)
+				return len(v.Union.Members) == 20
 			},
 		},
 		{
 			Name: "Ext->Ext:input",
-			Old: &ast.TypeExtensionSpec{
+			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.InputType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Input{Input: &ast.InputType{
+						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			New: &ast.TypeExtensionSpec{
+			},
+			},
+			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
 				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
-					Dirs: make([]*ast.DirectiveLit, 5),
-					Type: &ast.InputType{Fields: &ast.FieldList{List: make([]*ast.Field, 10)}},
+					Directives: make([]*ast.DirectiveLit, 5),
+					Type: &ast.TypeSpec_Input{Input: &ast.InputType{
+						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					}},
 				},
 			},
-			check: func(d *ast.GenDecl) bool {
-				text, ok := d.Spec.(*ast.TypeExtensionSpec)
+			},
+			},
+			check: func(d *ast.TypeDecl) bool {
+				text, ok := d.Spec.(*ast.TypeDecl_TypeExtSpec)
 				if !ok {
 					return false
 				}
 
-				ts := text.Type
-				if len(ts.Dirs) != 10 {
+				ts := text.TypeExtSpec.Type
+				if len(ts.Directives) != 10 {
 					return false
 				}
 
-				v := ts.Type.(*ast.InputType)
-				return len(v.Fields.List) == 20
+				v := ts.Type.(*ast.TypeSpec_Input)
+				return len(v.Input.Fields.List) == 20
 			},
 		},
 	}
@@ -680,9 +859,10 @@ func TestMergeTypes(t *testing.T) {
 				return
 			}
 
-			t := mergeTypes(&ast.GenDecl{Spec: testCase.Old}, &ast.GenDecl{Spec: testCase.New})
+			t := mergeTypes(testCase.Old, testCase.New)
 			if !testCase.check(t) {
 				subT.Fail()
+				return
 			}
 		})
 	}
@@ -695,8 +875,8 @@ func TestAddTypes(t *testing.T) {
 		return
 	}
 
-	typeMap := make(map[string]*ast.GenDecl)
-	err = addTypes(&node{Document: doc}, typeMap, func(name string, decl *ast.GenDecl, decls map[string]*ast.GenDecl) bool {
+	typeMap := make(map[string]*ast.TypeDecl)
+	err = addTypes(&node{Document: doc}, typeMap, func(name string, decl *ast.TypeDecl, decls map[string]*ast.TypeDecl) bool {
 		if isBuiltinType(name) {
 			return true
 		}
@@ -770,25 +950,110 @@ interface Connection {
 	hasNextPage: Boolean
 }`
 
-	apiGQL = `import "graph"
+	apiGQL = `@import(paths: ["graph"])
 
 interface TestNode {
 	id: ID!
 }
 
-type User implements graph.Node & TestNode {
+type User implements Node & TestNode {
 	id: ID!
 	name: String
 }
 
-type UserConnection implements graph.Connection {
+type UserConnection implements Connection {
 	total: Int
-	edges: [graph.Node]
+	edges: [Node]
 	hasNextPage: Boolean
+}`
+
+	oneGql = `@import(paths: ["two", "six", "four"])
+
+type Service implements Doc {
+	t: Time
+	obj: Obj
+}`
+	twoGql = `@import(paths: ["thr"])
+
+interface Doc {
+	v: Version
+}`
+	thrGql  = `scalar Version`
+	fourGql = `scalar Time`
+	fiveGql = `@import(paths: ["six", "two"])
+
+type T implements Doc {
+	v: Version
+	obj: Obj
+}`
+	sixGql = `@import(paths: ["thr"])
+
+type Obj {
+	v: Version
 }`
 )
 
 func TestReduceImports(t *testing.T) {
+	testCases := []struct {
+		Name     string
+		DocsLen  int
+		TypesLen map[string]int
+		Docs     map[string]io.Reader
+	}{
+		{
+			Name:     "Graphy",
+			DocsLen:  1,
+			TypesLen: map[string]int{"test": 5},
+			Docs:     map[string]io.Reader{"graph": strings.NewReader(graphGQL), "test": strings.NewReader(apiGQL)},
+		},
+		{
+			Name:     "NoImports",
+			DocsLen:  1,
+			TypesLen: map[string]int{"test": 1},
+			Docs:     map[string]io.Reader{"test": strings.NewReader(thrGql)},
+		},
+		{
+			Name:     "SingleImport",
+			DocsLen:  1,
+			TypesLen: map[string]int{"two": 2},
+			Docs:     map[string]io.Reader{"two": strings.NewReader(twoGql), "thr": strings.NewReader(thrGql)},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(subT *testing.T) {
+			docs, err := parser.ParseDocs(token.NewDocSet(), testCase.Docs, 0)
+			if err != nil {
+				subT.Error(err)
+				return
+			}
+
+			docs, err = ReduceImports(docs)
+			if err != nil {
+				subT.Error(err)
+				return
+			}
+
+			if len(docs) != testCase.DocsLen {
+				t.Fail()
+				return
+			}
+
+			for _, doc := range docs {
+				if len(doc.Types) != testCase.TypesLen[doc.Name] {
+					t.Fail()
+					return
+				}
+
+				for _, tg := range doc.Types {
+					if tg == nil {
+						t.Fail()
+						return
+					}
+				}
+			}
+		})
+	}
 	docs, err := parser.ParseDocs(token.NewDocSet(), map[string]io.Reader{"graph": strings.NewReader(graphGQL), "api": strings.NewReader(apiGQL)}, 0)
 	if err != nil {
 		t.Error(err)
@@ -799,23 +1064,6 @@ func TestReduceImports(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 		return
-	}
-
-	if len(docs) != 1 {
-		t.Fail()
-		return
-	}
-
-	if len(docs[0].Types) != 5 {
-		t.Fail()
-		return
-	}
-
-	for _, tg := range docs[0].Types {
-		if tg == nil {
-			t.Fail()
-			return
-		}
 	}
 }
 
@@ -830,14 +1078,14 @@ interface Connection {
 	hasNextPage: Boolean
 }`
 
-	baseGQL = `import "graph"
+	baseGQL = `@import(paths: ["graph"])
 
 type User {
 	id: ID!
 	name: String
 }
 
-type UserConnection implements graph.Connection {}`
+type UserConnection implements Connection {}`
 )
 
 func TestPeerTypes(t *testing.T) {

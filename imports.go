@@ -7,20 +7,6 @@ import (
 	"strings"
 )
 
-// IsImported reports whether or not a type declaration
-// was imported from another Document i.e. it was copied
-// from another AST.
-//
-func IsImported(gd *ast.GenDecl) (ok bool) {
-	switch v := gd.Spec.(type) {
-	case *ast.TypeSpec:
-		_, ok = v.Name.(*ast.SelectorExpr)
-	case *ast.TypeExtensionSpec:
-		_, ok = v.Type.Name.(*ast.SelectorExpr)
-	}
-	return
-}
-
 // node extends a ast.Document with its imports as children, thus
 // creating a tree structure which can be walked.
 type node struct {
@@ -67,14 +53,22 @@ func ReduceImports(docs []*ast.Document) ([]*ast.Document, error) {
 func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 	for i := 0; i < len(nodes); i++ {
 		n := nodes[i]
-		for _, ig := range n.Document.Imports {
-			for _, imps := range ig.Specs {
-				id := dMap[imps.Name.Name]
+		for _, dir := range n.Document.Directives {
+			if dir.Name != "import" {
+				continue
+			}
+
+			imps := dir.Args.Args[0]
+			compList := imps.Value.(*ast.Arg_CompositeLit).CompositeLit.Value.(*ast.CompositeLit_ListLit)
+			paths := compList.ListLit.List.(*ast.ListLit_BasicList).BasicList.Values
+			for _, imp := range paths {
+				path := strings.Trim(imp.Value, "\"")
+				id := dMap[path]
 				if id == nil {
 					return nil, Error{
 						DocName: n.Name,
 						GenName: "ReduceImports",
-						Msg:     fmt.Sprintf("unknown import: %s", imps.Name.Name),
+						Msg:     fmt.Sprintf("unknown import: %s", imp.Value),
 					}
 				}
 				if isCircular(n, id) {
@@ -107,11 +101,11 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 }
 
 func resolveImports(root *node) (err error) {
-	typeMap := make(map[string]*ast.GenDecl)
+	typeMap := make(map[string]*ast.TypeDecl)
 	defer func() {
 		// Convert type map to type slice
 		i := 0
-		root.Types = make([]*ast.GenDecl, len(typeMap))
+		root.Types = make([]*ast.TypeDecl, len(typeMap))
 		for _, v := range typeMap {
 			root.Types[i] = v
 			i++
@@ -119,7 +113,7 @@ func resolveImports(root *node) (err error) {
 	}()
 
 	// Add root types to typeMap
-	err = addTypes(root, typeMap, func(name string, decl *ast.GenDecl, decls map[string]*ast.GenDecl) bool {
+	err = addTypes(root, typeMap, func(name string, decl *ast.TypeDecl, decls map[string]*ast.TypeDecl) bool {
 		if isBuiltinType(name) {
 			return true
 		}
@@ -142,8 +136,8 @@ func resolveImports(root *node) (err error) {
 	}
 
 	// Walk import graph
-	err = walk(q, typeMap, func(n *node, decls map[string]*ast.GenDecl) error {
-		return addTypes(n, decls, func(name string, decl *ast.GenDecl, types map[string]*ast.GenDecl) bool {
+	err = walk(q, typeMap, func(n *node, decls map[string]*ast.TypeDecl) error {
+		return addTypes(n, decls, func(name string, decl *ast.TypeDecl, types map[string]*ast.TypeDecl) bool {
 			// Check if builtin type
 			if isBuiltinType(name) {
 				return true
@@ -178,7 +172,7 @@ func resolveImports(root *node) (err error) {
 	}
 
 	// Check for any un-imported peer types
-	peerMap := make(map[string]*ast.GenDecl)
+	peerMap := make(map[string]*ast.TypeDecl)
 	for name, tg := range typeMap {
 		if tg == nil {
 			peerMap[name] = nil
@@ -191,8 +185,8 @@ func resolveImports(root *node) (err error) {
 		}
 
 		// Walk import graph
-		err = walk(q, peerMap, func(n *node, decls map[string]*ast.GenDecl) error {
-			return addTypes(n, decls, func(name string, decl *ast.GenDecl, types map[string]*ast.GenDecl) bool {
+		err = walk(q, peerMap, func(n *node, decls map[string]*ast.TypeDecl) error {
+			return addTypes(n, decls, func(name string, decl *ast.TypeDecl, types map[string]*ast.TypeDecl) bool {
 				// Check if builtin type
 				if isBuiltinType(name) {
 					return true
@@ -240,7 +234,7 @@ func resolveImports(root *node) (err error) {
 }
 
 // walk preforms a breadth-first walk of the import graph
-func walk(q *list.List, typeMap map[string]*ast.GenDecl, f func(*node, map[string]*ast.GenDecl) error) (err error) {
+func walk(q *list.List, typeMap map[string]*ast.TypeDecl, f func(*node, map[string]*ast.TypeDecl) error) (err error) {
 	for q.Len() > 0 {
 		v := q.Front()
 		q.Remove(v)
@@ -259,127 +253,160 @@ func walk(q *list.List, typeMap map[string]*ast.GenDecl, f func(*node, map[strin
 }
 
 // mergeTypes handles merging TypeSpecExts with TypeSpecs or TypeSpecExts w/ TypeSpecExts
-func mergeTypes(o, n *ast.GenDecl) *ast.GenDecl {
-	decl := &ast.GenDecl{Doc: &ast.DocGroup{}}
+func mergeTypes(o, n *ast.TypeDecl) *ast.TypeDecl {
+	decl := &ast.TypeDecl{Doc: &ast.DocGroup{}}
 
 	// Try asserting to TypeSpecs
-	ots, otsOK := o.Spec.(*ast.TypeSpec)
-	nts, ntsOK := n.Spec.(*ast.TypeSpec)
+	ots, otsOK := o.Spec.(*ast.TypeDecl_TypeSpec)
+	nts, ntsOK := n.Spec.(*ast.TypeDecl_TypeSpec)
 
 	// Convert both to TypeSpecs if they aren't already
 	ts := &ast.TypeSpec{Doc: decl.Doc}
+	dts := &ast.TypeDecl_TypeSpec{TypeSpec: ts}
 	switch {
 	case otsOK && !ntsOK: // Old: Spec, New: Ext
 		panic("compiler: circular import")
 	case !otsOK && ntsOK: // Old: Ext, New: Spec
 		// Set new spec
-		decl.Spec = ts
+		decl.Spec = dts
 
 		// Assert old to ext
-		ext := o.Spec.(*ast.TypeExtensionSpec)
-		ots = ext.Type
-		ots.Doc = ext.Doc
+		ots = new(ast.TypeDecl_TypeSpec)
+		ext := o.Spec.(*ast.TypeDecl_TypeExtSpec).TypeExtSpec
+		ots.TypeSpec = ext.Type
+		ots.TypeSpec.Doc = ext.Doc
 	case !otsOK && !ntsOK: // Old: Ext, New: Ext
 		// Set new spec
-		decl.Spec = &ast.TypeExtensionSpec{Type: ts}
+		decl.Spec = &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{Type: ts}}
 
 		// Assert to old and new ext
-		oext := o.Spec.(*ast.TypeExtensionSpec)
-		next := n.Spec.(*ast.TypeExtensionSpec)
+		oext := o.Spec.(*ast.TypeDecl_TypeExtSpec)
+		next := n.Spec.(*ast.TypeDecl_TypeExtSpec)
 
-		ots, nts = oext.Type, next.Type
-		ots.Doc, nts.Doc = oext.Doc, next.Doc
+		ots, nts = new(ast.TypeDecl_TypeSpec), new(ast.TypeDecl_TypeSpec)
+		ots.TypeSpec, nts.TypeSpec = oext.TypeExtSpec.Type, next.TypeExtSpec.Type
+		ots.TypeSpec.Doc, nts.TypeSpec.Doc = oext.TypeExtSpec.Doc, next.TypeExtSpec.Doc
 	default:
 		panic("compiler: unexpected merging of TypeSpec and TypeSpec")
 	}
 
 	// Merge doc groups
-	ts.Doc.List = append(ts.Doc.List, ots.Doc.List...)
-	ts.Doc.List = append(ts.Doc.List, nts.Doc.List...)
+	ts.Doc.List = append(ts.Doc.List, ots.TypeSpec.Doc.List...)
+	ts.Doc.List = append(ts.Doc.List, nts.TypeSpec.Doc.List...)
 
 	// Merge type
-	ts.Type = mergeExprs(ots.Type, nts.Type)
+	t := mergeExprs(ots.TypeSpec.Type, nts.TypeSpec.Type)
+	switch v := t.(type) {
+	case *ast.TypeSpec_Schema:
+		ts.Type = v
+	case *ast.TypeSpec_Scalar:
+		ts.Type = v
+	case *ast.TypeSpec_Object:
+		ts.Type = v
+	case *ast.TypeSpec_Interface:
+		ts.Type = v
+	case *ast.TypeSpec_Union:
+		ts.Type = v
+	case *ast.TypeSpec_Enum:
+		ts.Type = v
+	case *ast.TypeSpec_Input:
+		ts.Type = v
+	case *ast.TypeSpec_Directive:
+		ts.Type = v
+	}
 
 	// Add name and directives
-	ts.Name = ots.Name
-	ts.Dirs = append(ts.Dirs, ots.Dirs...)
-	ts.Dirs = append(ts.Dirs, nts.Dirs...)
+	ts.Name = ots.TypeSpec.Name
+	ts.Directives = append(ts.Directives, ots.TypeSpec.Directives...)
+	ts.Directives = append(ts.Directives, nts.TypeSpec.Directives...)
 
 	return decl
 }
 
-func mergeExprs(o, n ast.Expr) (e ast.Expr) {
+func mergeExprs(o, n interface{}) (e interface{}) {
 	switch u := o.(type) {
-	case *ast.SchemaType:
-		v, ok := n.(*ast.SchemaType)
+	case *ast.TypeSpec_Schema:
+		v, ok := n.(*ast.TypeSpec_Schema)
 		if !ok {
 			panic("mismatched types")
 		}
 
-		e = &ast.SchemaType{
-			Fields: &ast.FieldList{
-				List: append(u.Fields.List, v.Fields.List...),
+		e = &ast.TypeSpec_Schema{
+			Schema: &ast.SchemaType{
+				RootOps: &ast.FieldList{
+					List: append(u.Schema.RootOps.List, v.Schema.RootOps.List...),
+				},
 			},
 		}
-	case *ast.ScalarType:
-		_, ok := n.(*ast.ScalarType)
+	case *ast.TypeSpec_Scalar:
+		_, ok := n.(*ast.TypeSpec_Scalar)
 		if !ok {
 			panic("mismatched types")
 		}
 
 		e = u
-	case *ast.ObjectType:
-		v, ok := n.(*ast.ObjectType)
+	case *ast.TypeSpec_Object:
+		v, ok := n.(*ast.TypeSpec_Object)
 		if !ok {
 			panic("mismatched types")
 		}
 
-		e = &ast.ObjectType{
-			Impls: append(u.Impls, v.Impls...),
-			Fields: &ast.FieldList{
-				List: append(u.Fields.List, v.Fields.List...),
+		e = &ast.TypeSpec_Object{
+			Object: &ast.ObjectType{
+				Interfaces: append(u.Object.Interfaces, v.Object.Interfaces...),
+				Fields: &ast.FieldList{
+					List: append(u.Object.Fields.List, v.Object.Fields.List...),
+				},
 			},
 		}
-	case *ast.InterfaceType:
-		v, ok := n.(*ast.InterfaceType)
+	case *ast.TypeSpec_Interface:
+		v, ok := n.(*ast.TypeSpec_Interface)
 		if !ok {
 			panic("mismatched types")
 		}
 
-		e = &ast.InterfaceType{
-			Fields: &ast.FieldList{
-				List: append(u.Fields.List, v.Fields.List...),
+		e = &ast.TypeSpec_Interface{
+			Interface: &ast.InterfaceType{
+				Fields: &ast.FieldList{
+					List: append(u.Interface.Fields.List, v.Interface.Fields.List...),
+				},
 			},
 		}
-	case *ast.EnumType:
-		v, ok := n.(*ast.EnumType)
+	case *ast.TypeSpec_Enum:
+		v, ok := n.(*ast.TypeSpec_Enum)
 		if !ok {
 			panic("mismatched types")
 		}
 
-		e = &ast.EnumType{
-			Fields: &ast.FieldList{
-				List: append(u.Fields.List, v.Fields.List...),
+		e = &ast.TypeSpec_Enum{
+			Enum: &ast.EnumType{
+				Values: &ast.FieldList{
+					List: append(u.Enum.Values.List, v.Enum.Values.List...),
+				},
 			},
 		}
-	case *ast.UnionType:
-		v, ok := n.(*ast.UnionType)
+	case *ast.TypeSpec_Union:
+		v, ok := n.(*ast.TypeSpec_Union)
 		if !ok {
 			panic("mismatched types")
 		}
 
-		e = &ast.UnionType{
-			Members: append(u.Members, v.Members...),
+		e = &ast.TypeSpec_Union{
+			Union: &ast.UnionType{
+				Members: append(u.Union.Members, v.Union.Members...),
+			},
 		}
-	case *ast.InputType:
-		v, ok := n.(*ast.InputType)
+	case *ast.TypeSpec_Input:
+		v, ok := n.(*ast.TypeSpec_Input)
 		if !ok {
 			panic("mismatched types")
 		}
 
-		e = &ast.InputType{
-			Fields: &ast.FieldList{
-				List: append(u.Fields.List, v.Fields.List...),
+		e = &ast.TypeSpec_Input{
+			Input: &ast.InputType{
+				Fields: &ast.FieldList{
+					List: append(u.Input.Fields.List, v.Input.Fields.List...),
+				},
 			},
 		}
 	}
@@ -388,27 +415,21 @@ func mergeExprs(o, n ast.Expr) (e ast.Expr) {
 
 const selExprTmpl = "%s.%s"
 
-func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.GenDecl, map[string]*ast.GenDecl) bool) (err error) {
+func addTypes(n *node, typeMap map[string]*ast.TypeDecl, add func(string, *ast.TypeDecl, map[string]*ast.TypeDecl) bool) (err error) {
 	for _, tg := range n.Types {
 		var ts *ast.TypeSpec
 		switch v := tg.Spec.(type) {
-		case *ast.TypeSpec:
-			ts = v
-		case *ast.TypeExtensionSpec:
-			ts = v.Type
+		case *ast.TypeDecl_TypeSpec:
+			ts = v.TypeSpec
+		case *ast.TypeDecl_TypeExtSpec:
+			ts = v.TypeExtSpec.Type
 		default:
 			panic("unknown spec")
 		}
 
-		var name string
-		switch v := ts.Name.(type) {
-		case *ast.Ident:
-			name = fmt.Sprintf(selExprTmpl, n.Name, v.Name)
-			ts.Name = &ast.SelectorExpr{X: &ast.Ident{Name: n.Name}, Sel: v}
-		case *ast.SelectorExpr:
-			name = fmt.Sprintf(selExprTmpl, v.X.(*ast.Ident).Name, v.Sel.Name)
-		default: // The only type which doesn't hav a name is a schema
-			name = fmt.Sprintf(selExprTmpl, n.Name, "Schema")
+		name := ts.Name.Name
+		if ts.Name == nil {
+			name = "schema"
 		}
 
 		// Add type decl
@@ -419,51 +440,37 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 
 		// Find any imported types contained within decl
 		switch v := ts.Type.(type) {
-		case *ast.ScalarType:
+		case *ast.TypeSpec_Scalar:
 			// Scalar doesn't need anything done to it
-		case *ast.ObjectType:
-			for i := range v.Impls {
-				impl := v.Impls[i]
-				switch u := impl.(type) {
-				case *ast.Ident:
-					name = fmt.Sprintf(selExprTmpl, n.Name, u.Name)
-					v.Impls[i] = &ast.SelectorExpr{X: &ast.Ident{Name: n.Name}, Sel: u}
-				case *ast.SelectorExpr:
-					name = fmt.Sprintf(selExprTmpl, u.X.(*ast.Ident).Name, u.Sel.Name)
-				}
-				add(name, nil, typeMap)
+		case *ast.TypeSpec_Object:
+			for i := range v.Object.Interfaces {
+				impl := v.Object.Interfaces[i]
+				add(impl.Name, nil, typeMap)
 			}
 
-			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
+			err = resolveFieldList(n.Name, v.Object.Fields, typeMap, add)
 			if err != nil {
 				return
 			}
-		case *ast.InterfaceType:
-			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
+		case *ast.TypeSpec_Interface:
+			err = resolveFieldList(n.Name, v.Interface.Fields, typeMap, add)
 			if err != nil {
 				return
 			}
-		case *ast.UnionType:
-			for i := range v.Members {
-				mem := v.Members[i]
-				switch u := mem.(type) {
-				case *ast.Ident:
-					name = fmt.Sprintf(selExprTmpl, n.Name, u.Name)
-					v.Members[i] = &ast.SelectorExpr{X: &ast.Ident{Name: n.Name}, Sel: u}
-				case *ast.SelectorExpr:
-					name = fmt.Sprintf(selExprTmpl, u.X.(*ast.Ident).Name, u.Sel.Name)
-				}
-				add(name, nil, typeMap)
+		case *ast.TypeSpec_Union:
+			for i := range v.Union.Members {
+				mem := v.Union.Members[i]
+				add(mem.Name, nil, typeMap)
 			}
-		case *ast.EnumType:
+		case *ast.TypeSpec_Enum:
 			// TODO: probably should resolve directives here
-		case *ast.InputType:
-			err = resolveFieldList(n.Name, v.Fields, typeMap, add)
+		case *ast.TypeSpec_Input:
+			err = resolveFieldList(n.Name, v.Input.Fields, typeMap, add)
 			if err != nil {
 				return err
 			}
-		case *ast.DirectiveType:
-			err = resolveFieldList(n.Name, v.Args, typeMap, add)
+		case *ast.TypeSpec_Directive:
+			err = resolveFieldList(n.Name, v.Directive.Args, typeMap, add)
 			if err != nil {
 				return err
 			}
@@ -473,7 +480,7 @@ func addTypes(n *node, typeMap map[string]*ast.GenDecl, add func(string, *ast.Ge
 	return
 }
 
-func resolveFieldList(name string, fields *ast.FieldList, typeMap map[string]*ast.GenDecl, add func(string, *ast.GenDecl, map[string]*ast.GenDecl) bool) (err error) {
+func resolveFieldList(name string, fields *ast.FieldList, typeMap map[string]*ast.TypeDecl, add func(string, *ast.TypeDecl, map[string]*ast.TypeDecl) bool) (err error) {
 	if fields == nil {
 		return
 	}
@@ -484,19 +491,18 @@ func resolveFieldList(name string, fields *ast.FieldList, typeMap map[string]*as
 			return
 		}
 
-		t := unwrapType(f.Type)
-		switch v := t.(type) {
-		case *ast.Ident:
-			tname := fmt.Sprintf(selExprTmpl, name, v.Name)
-			add(tname, nil, typeMap)
-
-			if !isBuiltinType(tname) {
-				insertType(f.Type, &ast.SelectorExpr{X: &ast.Ident{Name: name}, Sel: v})
-			}
-		case *ast.SelectorExpr:
-			tname := fmt.Sprintf(selExprTmpl, v.X.(*ast.Ident).Name, v.Sel.Name)
-			add(tname, nil, typeMap)
+		var t *ast.Ident
+		switch v := f.Type.(type) {
+		case *ast.Field_Ident:
+			t = v.Ident
+		case *ast.Field_NonNull:
+			t = unwrapType(v.NonNull)
+		case *ast.Field_List:
+			t = unwrapType(v.List)
+		default:
+			return
 		}
+		add(t.Name, nil, typeMap)
 	}
 	return
 }
@@ -511,43 +517,31 @@ func isCircular(a, b *node) bool {
 }
 
 func isBuiltinType(name string) bool {
-	s := strings.Split(name, ".")
-	tname := strings.ToLower(s[1])
+	tname := strings.ToLower(name)
 	return tname == "id" || tname == "boolean" || tname == "int" || tname == "string" || tname == "float"
 }
 
-func unwrapType(t ast.Expr) ast.Expr {
-	switch v := t.(type) {
-	case *ast.SelectorExpr:
-		return v
+func unwrapType(i interface{}) *ast.Ident {
+	switch v := i.(type) {
 	case *ast.Ident:
 		return v
 	case *ast.List:
-		return unwrapType(v.Type)
+		switch u := v.Type.(type) {
+		case *ast.List_Ident:
+			return u.Ident
+		case *ast.List_List:
+			return unwrapType(v.Type)
+		case *ast.List_NonNull:
+			return unwrapType(v.Type)
+		}
 	case *ast.NonNull:
-		return unwrapType(v.Type)
+		switch u := v.Type.(type) {
+		case *ast.NonNull_Ident:
+			return u.Ident
+		case *ast.NonNull_List:
+			return unwrapType(v.Type)
+		}
 	}
 
 	return nil
-}
-
-func insertType(o, n ast.Expr) {
-	switch v := o.(type) {
-	case *ast.Ident:
-		o = n
-	case *ast.List:
-		if _, ok := v.Type.(*ast.Ident); !ok {
-			insertType(v.Type, n)
-			break
-		}
-
-		v.Type = n
-	case *ast.NonNull:
-		if _, ok := v.Type.(*ast.Ident); !ok {
-			insertType(v.Type, n)
-			break
-		}
-
-		v.Type = n
-	}
 }

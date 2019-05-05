@@ -9,17 +9,14 @@ import (
 	"path/filepath"
 )
 
-// CodeGenerator provides a simple API for creating a code generator for
+// Generator provides a simple API for creating a code generator for
 // any language desired.
 //
-type CodeGenerator interface {
-	// Generate handles converting a GraphQL Document to a scaffolded source code.
+type Generator interface {
+	// Generate handles converting a GraphQL Document to scaffolded source code.
 	// Any imported types referenced in the Document are concatenated to its Types slice.
 	//
 	Generate(ctx context.Context, doc *ast.Document, opts string) error
-
-	// GenerateAll
-	GenerateAll(ctx context.Context, docs []*ast.Document, opts string) error
 }
 
 // GeneratorContext represents the directory to which
