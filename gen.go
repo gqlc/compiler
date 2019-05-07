@@ -12,8 +12,6 @@ import (
 //
 type Generator interface {
 	// Generate handles converting a GraphQL Document to scaffolded source code.
-	// Any imported types referenced in the Document are concatenated to its Types slice.
-	//
 	Generate(ctx context.Context, doc *ast.Document, opts string) error
 }
 
@@ -25,18 +23,20 @@ type GeneratorContext interface {
 	Open(filename string) (io.WriteCloser, error)
 }
 
-const genCtx = "genCtx"
+type genCtx string
+
+var genCtxKey = genCtx("genCtx")
 
 // WithContext returns a prepared context.Context
 // with the given GeneratorContext.
 //
 func WithContext(ctx context.Context, gCtx GeneratorContext) context.Context {
-	return context.WithValue(ctx, genCtx, gCtx)
+	return context.WithValue(ctx, genCtxKey, gCtx)
 }
 
 // Context returns the generator context.
 func Context(ctx context.Context) GeneratorContext {
-	return ctx.Value(genCtx).(GeneratorContext)
+	return ctx.Value(genCtxKey).(GeneratorContext)
 }
 
 // Error represents an error from a generator.
