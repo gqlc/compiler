@@ -175,3 +175,7 @@ func TestMain(m *testing.M) {
 
 	os.Exit(m.Run())
 }
+
+func TestValidate(t *testing.T) {
+	t.Skip()
+}

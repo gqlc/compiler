@@ -63,3 +63,8 @@ var Types []*ast.TypeDecl
 
 // RegisterTypes registers pre-defined types with the compiler.
 func RegisterTypes(decls ...*ast.TypeDecl) { Types = append(Types, decls...) }
+
+// Validate applies the GraphQL type validation rules, per the GraphQL spec.
+func Validate(doc *ast.Document) (ok bool, errs []*TypeError) {
+	return
+}
