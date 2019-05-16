@@ -7,6 +7,16 @@ import (
 	"strings"
 )
 
+// ImportError represents an error with the imports in a GraphQL Document
+type ImportError struct {
+	Doc *ast.Document
+	Msg string
+}
+
+func (e *ImportError) Error() string {
+	return fmt.Sprintf("compiler: import error encountered in %s:%s", e.Doc.Name, e.Msg)
+}
+
 // node extends a ast.Document with its imports as children, thus
 // creating a tree structure which can be walked.
 type node struct {
@@ -65,17 +75,15 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 				path := strings.Trim(imp.Value, "\"")
 				id := dMap[path]
 				if id == nil {
-					return nil, Error{
-						DocName: n.Name,
-						GenName: "ReduceImports",
-						Msg:     fmt.Sprintf("unknown import: %s", imp.Value),
+					return nil, &ImportError{
+						Doc: n.Document,
+						Msg: fmt.Sprintf("unknown import: %s", imp.Value),
 					}
 				}
 				if isCircular(n, id) {
-					return nil, Error{
-						DocName: n.Name,
-						GenName: "ReduceImports",
-						Msg:     fmt.Sprintf("circular imports: %s <-> %s", n.Name, id.Name),
+					return nil, &ImportError{
+						Doc: n.Document,
+						Msg: fmt.Sprintf("circular imports: %s <-> %s", n.Name, id.Name),
 					}
 				}
 

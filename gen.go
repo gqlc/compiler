@@ -39,8 +39,8 @@ func Context(ctx context.Context) GeneratorContext {
 	return ctx.Value(genCtxKey).(GeneratorContext)
 }
 
-// Error represents an error from a generator.
-type Error struct {
+// GeneratorError represents an error from a generator.
+type GeneratorError struct {
 	// DocName is the document being worked on when error was encountered.
 	DocName string
 
@@ -51,6 +51,6 @@ type Error struct {
 	Msg string
 }
 
-func (e Error) Error() string {
-	return fmt.Sprintf("compiler: error occurred in %s:%s %s", e.GenName, e.DocName, e.Msg)
+func (e GeneratorError) Error() string {
+	return fmt.Sprintf("compiler: generator error occurred in %s:%s %s", e.GenName, e.DocName, e.Msg)
 }
