@@ -16,7 +16,7 @@ func TestValue(t *testing.T) {
 		CName        string
 		C            interface{}
 		Val, ValType interface{}
-		Items        map[string]*item
+		Items        map[string]*ast.TypeDecl
 		Errs         []string
 	}{
 		{
@@ -80,8 +80,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*item{
-				"Test": {TypeDecl: &ast.TypeDecl{
+			Items: map[string]*ast.TypeDecl{
+				"Test": {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -94,7 +94,7 @@ func TestValue(t *testing.T) {
 							},
 						}},
 					}},
-				}},
+				},
 			},
 		},
 		{
@@ -111,7 +111,7 @@ func TestValue(t *testing.T) {
 			CName:   "undefinedObject",
 			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items:   map[string]*item{},
+			Items:   map[string]*ast.TypeDecl{},
 			Errs: []string{
 				fmt.Sprintf("%s:%s: undefined input object: %s", "Composite:UndefinedObject", "undefinedObject", "Test"),
 			},
@@ -121,7 +121,7 @@ func TestValue(t *testing.T) {
 			CName:   "onlyExtensionProvided",
 			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items:   map[string]*item{"Test": {TypeDecl: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{}}}},
+			Items:   map[string]*ast.TypeDecl{"Test": {Spec: &ast.TypeDecl_TypeExtSpec{}}},
 			Errs: []string{
 				fmt.Sprintf("%s:%s: could not find type spec for input object: %s", "Composite:OnlyExtensionProvided", "onlyExtensionProvided", "Test"),
 			},
@@ -131,13 +131,13 @@ func TestValue(t *testing.T) {
 			CName:   "expectedValueNotAnInputObject",
 			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*item{
-				"Test": {TypeDecl: &ast.TypeDecl{
+			Items: map[string]*ast.TypeDecl{
+				"Test": {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Scalar{},
 					}},
-				}},
+				},
 			},
 			Errs: []string{
 				fmt.Sprintf("%s:%s: %s is not an input object", "Composite:ExpectedValueNotAnInputObject", "expectedValueNotAnInputObject", "Test"),
@@ -155,8 +155,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*item{
-				"Test": {TypeDecl: &ast.TypeDecl{
+			Items: map[string]*ast.TypeDecl{
+				"Test": {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -169,7 +169,7 @@ func TestValue(t *testing.T) {
 							},
 						}},
 					}},
-				}},
+				},
 			},
 			Errs: []string{
 				fmt.Sprintf("%s:%s: undefined field: %s", "Composite:UndefinedField", "undefinedField", "d"),
@@ -187,8 +187,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*item{
-				"Test": {TypeDecl: &ast.TypeDecl{
+			Items: map[string]*ast.TypeDecl{
+				"Test": {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -201,7 +201,7 @@ func TestValue(t *testing.T) {
 							},
 						}},
 					}},
-				}},
+				},
 			},
 			Errs: []string{
 				fmt.Sprintf("%s:%s: field must be unique: %s", "Composite:NonUniqueField", "nonUniqueField", "a"),
@@ -218,8 +218,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*item{
-				"Test": {TypeDecl: &ast.TypeDecl{
+			Items: map[string]*ast.TypeDecl{
+				"Test": {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -233,7 +233,7 @@ func TestValue(t *testing.T) {
 							},
 						}},
 					}},
-				}},
+				},
 			},
 			Errs: []string{
 				fmt.Sprintf("%s: non-null field must be present in: %s", "d", "Composite:MissingRequiredField"),
@@ -325,8 +325,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.List{Type: &ast.List_Ident{Ident: &ast.Ident{Name: "Test"}}},
-			Items: map[string]*item{
-				"Test": {TypeDecl: &ast.TypeDecl{
+			Items: map[string]*ast.TypeDecl{
+				"Test": {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -339,7 +339,7 @@ func TestValue(t *testing.T) {
 							},
 						}},
 					}},
-				}},
+				},
 			},
 		},
 		{
@@ -381,7 +381,7 @@ func TestDirectives(t *testing.T) {
 		Name  string
 		Dirs  []*ast.DirectiveLit
 		Loc   ast.DirectiveLocation_Loc
-		Items map[string]*item
+		Items map[string]*ast.TypeDecl
 		Errs  []string
 	}{
 		{
@@ -395,15 +395,15 @@ func TestDirectives(t *testing.T) {
 			Name: "InvalidLocation",
 			Dirs: []*ast.DirectiveLit{{Name: "test"}},
 			Loc:  ast.DirectiveLocation_FIELD,
-			Items: map[string]*item{
-				"test": {TypeDecl: &ast.TypeDecl{
+			Items: map[string]*ast.TypeDecl{
+				"test": {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "test"},
 						Type: &ast.TypeSpec_Directive{Directive: &ast.DirectiveType{
 							Locs: []*ast.DirectiveLocation{{Loc: ast.DirectiveLocation_NoPos}},
 						}},
 					}},
-				}},
+				},
 			},
 			Errs: []string{
 				fmt.Sprintf("%s: invalid location for directive: %s", "test", ast.DirectiveLocation_FIELD),
@@ -413,15 +413,15 @@ func TestDirectives(t *testing.T) {
 			Name: "MustBeUnique",
 			Dirs: []*ast.DirectiveLit{{Name: "test"}, {Name: "test"}},
 			Loc:  ast.DirectiveLocation_FIELD,
-			Items: map[string]*item{
-				"test": {TypeDecl: &ast.TypeDecl{
+			Items: map[string]*ast.TypeDecl{
+				"test": {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "test"},
 						Type: &ast.TypeSpec_Directive{Directive: &ast.DirectiveType{
 							Locs: []*ast.DirectiveLocation{{Loc: ast.DirectiveLocation_FIELD}},
 						}},
 					}},
-				}},
+				},
 			},
 			Errs: []string{
 				fmt.Sprintf("%s: directive cannot be applied more than once per location: %s", "test", ast.DirectiveLocation_FIELD),
@@ -452,27 +452,27 @@ func TestDirectives(t *testing.T) {
 }
 
 func TestCompareTypes(t *testing.T) {
-	items := map[string]*item{
-		"TestInterface": {TypeDecl: &ast.TypeDecl{
+	items := map[string]*ast.TypeDecl{
+		"TestInterface": {
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestInterface"}, Type: &ast.TypeSpec_Interface{}}},
-		}},
-		"TestUnion": {TypeDecl: &ast.TypeDecl{
+		},
+		"TestUnion": {
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestUnion"}, Type: &ast.TypeSpec_Union{
 				Union: &ast.UnionType{
 					Members: []*ast.Ident{{Name: "TestObjA"}, {Name: "TestObjB"}},
 				},
 			}}},
-		}},
-		"TestObjA": {TypeDecl: &ast.TypeDecl{
+		},
+		"TestObjA": {
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestObjA"}, Type: &ast.TypeSpec_Object{
 				Object: &ast.ObjectType{
 					Interfaces: []*ast.Ident{{Name: "TestInterface"}},
 				},
 			}}},
-		}},
-		"TestObjB": {TypeDecl: &ast.TypeDecl{
+		},
+		"TestObjB": {
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestObjB"}, Type: &ast.TypeSpec_Object{}}},
-		}},
+		},
 	}
 
 	testCases := []struct {
@@ -547,7 +547,7 @@ func TestValidate(t *testing.T) {
 		{
 			Name: "InvalidName",
 			Src:  `scalar __Int`,
-			Errs: []string{fmt.Sprintf("%s is an invalid name for type: %s", "__Int", token.STRING)},
+			Errs: []string{fmt.Sprintf("%s is an invalid name for type: %s", "__Int", token.SCALAR)},
 		},
 		{
 			Name: "InvalidDirectives",
@@ -632,7 +632,7 @@ schema {
 }
 
 schema {
-	query: Scalar
+	query: String
 }
 
 scalar String`,
@@ -684,7 +684,7 @@ type D implements Two {
 				fmt.Sprintf("%s: an object type must define one or more fields", "A"),
 				fmt.Sprintf("%s: undefined interface: %s", "B", "One"),
 				fmt.Sprintf("%s:%s: non-interface type can not be used as interface", "B", "String"),
-				fmt.Sprintf("%s:%s: object type must include field: %s", "D", "Two", "c"),
+				fmt.Sprintf("%s:%s: object type must include field: %s", "D", "Two", "u"),
 				fmt.Sprintf("%s:%s: object field type must be a sub-type of interface field type", "C", "u"),
 				fmt.Sprintf("%s:%s: object field is missing interface field argument: %s", "C", "a", "i"),
 				fmt.Sprintf("%s:%s:%s: object argument and interface argument must be the same type", "C", "a", "s"),
@@ -694,7 +694,7 @@ type D implements Two {
 		},
 		{
 			Name: "Directive",
-			Src: `directive @test(__a: Test @test) on SCALAR
+			Src: `directive @test(__a: Test @test) on ARGUMENT_DEFINITION
 
 scalar String
 
@@ -705,6 +705,138 @@ interface Test {
 				fmt.Sprintf("%s:%s: argument name cannot start with \"__\" (double underscore)", "test", "__a"),
 				fmt.Sprintf("%s:%s: directive argument must be a valid input type, not: %s", "test", "__a", "Test"),
 				fmt.Sprintf("%s:%s: directive argument cannont reference its own directive definition", "test", "__a"),
+			},
+		},
+		{
+			Name: "Extend:NoDefinitionFound",
+			Src:  `extend scalar String`,
+			Errs: []string{
+				fmt.Sprintf("extend:%s: no definition found for this type", "String"),
+			},
+		},
+		{
+			Name: "Extend:Scalar",
+			Src: `enum Test {
+	A
+}
+
+extend scalar Test`,
+			Errs: []string{
+				fmt.Sprintf("extend:scalar:%s: original type defintion must be a scalar", "Test"),
+			},
+		},
+		{
+			Name: "Extend:Object",
+			Src: `scalar String
+
+extend type String
+
+type Test {
+	a: String
+	b: String
+}
+
+interface A {
+	a: String
+}
+
+extend type Test implements A & B & String {
+	b: String
+}`,
+			Errs: []string{
+				fmt.Sprintf("extend:object:%s: original type defintion must be a object", "String"),
+				fmt.Sprintf("%s:%s: field defintion already exists in original object definition", "extend:object:Test", "b"),
+				fmt.Sprintf("%s: undefined interface: %s", "extend:object:Test", "B"),
+				fmt.Sprintf("%s:%s: non-interface type can not be used as interface", "extend:object:Test", "String"),
+			},
+		},
+		{
+			Name: "Extend:Interface",
+			Src: `scalar String
+
+extend interface String
+
+interface Test {
+	a: String
+}
+
+extend interface Test {
+	a: String
+}`,
+			Errs: []string{
+				fmt.Sprintf("extend:interface:%s: original type defintion must be a interface", "String"),
+				fmt.Sprintf("%s:%s: field already exists in original interface definition", "extend:interface:Test", "a"),
+			},
+		},
+		{
+			Name: "Extend:Union",
+			Src: `scalar String
+
+type A {
+	a: String
+}
+
+type B {
+	a: String
+}
+
+union Test = A | B
+
+extend union String
+
+extend union Test = A`,
+			Errs: []string{
+				fmt.Sprintf("extend:union:%s: original type defintion must be a union", "String"),
+				fmt.Sprintf("%s:%s: union member already exists in original union definition", "extend:union:Test", "A"),
+			},
+		},
+		{
+			Name: "Extend:Enum",
+			Src: `scalar String
+
+extend enum String
+
+enum Test {
+	A
+}
+
+extend enum Test {
+	A
+}`,
+			Errs: []string{
+				fmt.Sprintf("extend:enum:%s: original type defintion must be a enum", "String"),
+				fmt.Sprintf("%s:%s: enum value already exists in original enum definition", "extend:enum:Test", "A"),
+			},
+		},
+		{
+			Name: "Extend:Input",
+			Src: `scalar String
+
+extend input String
+
+input Test {
+	a: String
+}
+
+extend input Test {
+	a: String
+}`,
+			Errs: []string{
+				fmt.Sprintf("extend:input:%s: original type defintion must be a input", "String"),
+				fmt.Sprintf("%s:%s: field defintion already exists in original input definition", "extend:input:Test", "a"),
+			},
+		},
+		{
+			Name: "Extend:RepeatedDirectives",
+			Src: `scalar String @a
+
+directive @a on SCALAR
+
+directive @b on SCALAR
+
+extend scalar String @a @b`,
+			Errs: []string{
+				fmt.Sprintf("%s:%s: directive is already applied to original type definition", "String", "a"),
 			},
 		},
 	}
@@ -728,7 +860,17 @@ interface Test {
 				}
 			}
 
-			if count != len(errs) && len(errs) != len(testCase.Errs) {
+			if count != len(testCase.Errs) || count != len(errs) || len(errs) != len(testCase.Errs) {
+				fmt.Println("----------------------")
+				for _, terr := range errs {
+					fmt.Println("terr:", terr.Msg)
+				}
+				fmt.Println("----------------------")
+				for _, serr := range testCase.Errs {
+					fmt.Println("serr:", serr)
+				}
+				fmt.Println("----------------------")
+
 				subT.Fail()
 				return
 			}
