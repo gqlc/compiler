@@ -7,31 +7,6 @@ import (
 	"strings"
 )
 
-func init() {
-	RegisterTypes(&ast.TypeDecl{
-		Spec: &ast.TypeDecl_TypeSpec{
-			TypeSpec: &ast.TypeSpec{
-				Name: &ast.Ident{Name: "import"},
-				Type: &ast.TypeSpec_Directive{Directive: &ast.DirectiveType{
-					Locs: []*ast.DirectiveLocation{{Loc: ast.DirectiveLocation_DOCUMENT}},
-					Args: &ast.FieldList{
-						List: []*ast.Field{
-							{
-								Name: &ast.Ident{Name: "paths"},
-								Type: &ast.Field_List{
-									List: &ast.List{
-										Type: &ast.List_Ident{Ident: &ast.Ident{Name: "String"}},
-									},
-								},
-							},
-						},
-					},
-				}},
-			},
-		},
-	})
-}
-
 // ImportError represents an error with the imports in a GraphQL Document
 type ImportError struct {
 	Doc *ast.Document
@@ -52,6 +27,9 @@ type node struct {
 
 // ReduceImports reduces a set of Documents by including imported
 // type defs into the Documents that they're imported into.
+//
+// To import a Document the @import directive is used:
+// directive @import(paths: [String]) on DOCUMENT
 //
 func ReduceImports(docs []*ast.Document) ([]*ast.Document, error) {
 	// Map docs to nodes
@@ -88,10 +66,12 @@ func ReduceImports(docs []*ast.Document) ([]*ast.Document, error) {
 func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 	for i := 0; i < len(nodes); i++ {
 		n := nodes[i]
-		for _, dir := range n.Document.Directives {
+		index := -1
+		for ind, dir := range n.Document.Directives {
 			if dir.Name != "import" {
 				continue
 			}
+			index = ind
 
 			imps := dir.Args.Args[0]
 			compList := imps.Value.(*ast.Arg_CompositeLit).CompositeLit.Value.(*ast.CompositeLit_ListLit)
@@ -115,6 +95,12 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 				id.Imported = true
 				n.Childs = append(n.Childs, id)
 			}
+		}
+
+		if index > -1 {
+			copy(n.Document.Directives[index:], n.Document.Directives[index+1:])
+			n.Document.Directives[len(n.Document.Directives)-1] = nil // or the zero value of T
+			n.Document.Directives = n.Document.Directives[:len(n.Document.Directives)-1]
 		}
 	}
 

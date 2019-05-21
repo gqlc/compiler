@@ -184,6 +184,13 @@ func TestCreateImportTries(t *testing.T) {
 		return
 	}
 
+	for _, d := range forest {
+		if len(d.Directives) > 0 {
+			t.Fail()
+			return
+		}
+	}
+
 	// Now walk trie and verify its structure
 	var walk func(trie *node, lvl int, checker func(lvl int, n *node) bool) bool
 	walk = func(trie *node, lvl int, checker func(lvl int, n *node) bool) (ok bool) {

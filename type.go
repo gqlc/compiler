@@ -1413,6 +1413,40 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 			}
 
 			return
+		default:
+			ed, exists := items[u.Name]
+			if !exists {
+				break
+			}
+
+			ts, ok := ed.Spec.(*ast.TypeDecl_TypeSpec)
+			if !ok {
+				break
+			}
+
+			enum, ok := ts.TypeSpec.Type.(*ast.TypeSpec_Enum)
+			if !ok {
+				break
+			}
+
+			if enum.Enum.Values == nil {
+				break
+			}
+
+			for _, eval := range enum.Enum.Values.List {
+				if eval.Name.Name == bLit.Value {
+					exists = false
+				}
+			}
+
+			if !exists {
+				return
+			}
+
+			*errs = append(*errs, &TypeError{
+				Msg: fmt.Sprintf("%s:%s: enum: %s has no value named: %s", host, cName, u.Name, bLit.Value),
+			})
+			return
 		}
 
 		*errs = append(*errs, &TypeError{

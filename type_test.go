@@ -61,6 +61,49 @@ func TestValue(t *testing.T) {
 			ValType: &ast.Ident{Name: "ID"},
 		},
 		{
+			Name:    "Basic:Ident:EnumValue",
+			CName:   "enumValue",
+			Val:     &ast.BasicLit{Kind: int64(token.IDENT), Value: "ONE"},
+			ValType: &ast.Ident{Name: "Test"},
+			Items: map[string]*ast.TypeDecl{
+				"Test": {
+					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
+						Name: &ast.Ident{Name: "Test"},
+						Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
+							Values: &ast.FieldList{
+								List: []*ast.Field{
+									{Name: &ast.Ident{Name: "ONE"}},
+								},
+							},
+						}},
+					}},
+				},
+			},
+		},
+		{
+			Name:    "Basic:Ident:UnknownEnumValue",
+			CName:   "unknownEnumValue",
+			Val:     &ast.BasicLit{Kind: int64(token.IDENT), Value: "TWO"},
+			ValType: &ast.Ident{Name: "Test"},
+			Items: map[string]*ast.TypeDecl{
+				"Test": {
+					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
+						Name: &ast.Ident{Name: "Test"},
+						Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
+							Values: &ast.FieldList{
+								List: []*ast.Field{
+									{Name: &ast.Ident{Name: "ONE"}},
+								},
+							},
+						}},
+					}},
+				},
+			},
+			Errs: []string{
+				fmt.Sprintf("%s:%s: enum: %s has no value named: %s", "Basic:Ident:UnknownEnumValue", "unknownEnumValue", "Test", "TWO"),
+			},
+		},
+		{
 			Name:    "Basic:InvalidInputValue",
 			CName:   "invalidInputValueForField",
 			Val:     &ast.BasicLit{Kind: int64(token.INT), Value: "2"},
