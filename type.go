@@ -65,17 +65,6 @@ var Types = []*ast.TypeDecl{
 		Tok: int64(token.SCALAR),
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
-				Name: &ast.Ident{Name: "String"},
-				Type: &ast.TypeSpec_Scalar{
-					Scalar: &ast.ScalarType{Name: &ast.Ident{Name: "String"}},
-				},
-			},
-		},
-	},
-	{
-		Tok: int64(token.SCALAR),
-		Spec: &ast.TypeDecl_TypeSpec{
-			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Int"},
 				Type: &ast.TypeSpec_Scalar{
 					Scalar: &ast.ScalarType{Name: &ast.Ident{Name: "Int"}},
@@ -98,7 +87,18 @@ var Types = []*ast.TypeDecl{
 		Tok: int64(token.SCALAR),
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
-				Name: &ast.Ident{Name: "Float"},
+				Name: &ast.Ident{Name: "String"},
+				Type: &ast.TypeSpec_Scalar{
+					Scalar: &ast.ScalarType{Name: &ast.Ident{Name: "String"}},
+				},
+			},
+		},
+	},
+	{
+		Tok: int64(token.SCALAR),
+		Spec: &ast.TypeDecl_TypeSpec{
+			TypeSpec: &ast.TypeSpec{
+				Name: &ast.Ident{Name: "Boolean"},
 				Type: &ast.TypeSpec_Scalar{
 					Scalar: &ast.ScalarType{Name: &ast.Ident{Name: "Boolean"}},
 				},
