@@ -7,6 +7,31 @@ import (
 	"strings"
 )
 
+func init() {
+	RegisterTypes(&ast.TypeDecl{
+		Spec: &ast.TypeDecl_TypeSpec{
+			TypeSpec: &ast.TypeSpec{
+				Name: &ast.Ident{Name: "import"},
+				Type: &ast.TypeSpec_Directive{Directive: &ast.DirectiveType{
+					Locs: []*ast.DirectiveLocation{{Loc: ast.DirectiveLocation_DOCUMENT}},
+					Args: &ast.FieldList{
+						List: []*ast.Field{
+							{
+								Name: &ast.Ident{Name: "paths"},
+								Type: &ast.Field_List{
+									List: &ast.List{
+										Type: &ast.List_Ident{Ident: &ast.Ident{Name: "String"}},
+									},
+								},
+							},
+						},
+					},
+				}},
+			},
+		},
+	})
+}
+
 // ImportError represents an error with the imports in a GraphQL Document
 type ImportError struct {
 	Doc *ast.Document
