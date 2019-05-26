@@ -1,3 +1,6 @@
 module github.com/gqlc/compiler
 
-require github.com/gqlc/graphql v0.1.10
+require (
+	github.com/golang/protobuf v1.3.1
+	github.com/gqlc/graphql v0.1.11
+)
