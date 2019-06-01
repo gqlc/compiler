@@ -128,11 +128,11 @@ func TestValue(t *testing.T) {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-							Fields: &ast.FieldList{
-								List: []*ast.Field{
-									{Name: &ast.Ident{Name: "a"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Int"}}},
-									{Name: &ast.Ident{Name: "b"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Float"}}},
-									{Name: &ast.Ident{Name: "c"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "String"}}},
+							Fields: &ast.InputValueList{
+								List: []*ast.InputValue{
+									{Name: &ast.Ident{Name: "a"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Int"}}},
+									{Name: &ast.Ident{Name: "b"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Float"}}},
+									{Name: &ast.Ident{Name: "c"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "String"}}},
 								},
 							},
 						}},
@@ -203,11 +203,11 @@ func TestValue(t *testing.T) {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-							Fields: &ast.FieldList{
-								List: []*ast.Field{
-									{Name: &ast.Ident{Name: "a"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Int"}}},
-									{Name: &ast.Ident{Name: "b"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Float"}}},
-									{Name: &ast.Ident{Name: "c"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "String"}}},
+							Fields: &ast.InputValueList{
+								List: []*ast.InputValue{
+									{Name: &ast.Ident{Name: "a"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Int"}}},
+									{Name: &ast.Ident{Name: "b"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Float"}}},
+									{Name: &ast.Ident{Name: "c"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "String"}}},
 								},
 							},
 						}},
@@ -235,11 +235,11 @@ func TestValue(t *testing.T) {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-							Fields: &ast.FieldList{
-								List: []*ast.Field{
-									{Name: &ast.Ident{Name: "a"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Int"}}},
-									{Name: &ast.Ident{Name: "b"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Float"}}},
-									{Name: &ast.Ident{Name: "c"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "String"}}},
+							Fields: &ast.InputValueList{
+								List: []*ast.InputValue{
+									{Name: &ast.Ident{Name: "a"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Int"}}},
+									{Name: &ast.Ident{Name: "b"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Float"}}},
+									{Name: &ast.Ident{Name: "c"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "String"}}},
 								},
 							},
 						}},
@@ -266,12 +266,12 @@ func TestValue(t *testing.T) {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-							Fields: &ast.FieldList{
-								List: []*ast.Field{
-									{Name: &ast.Ident{Name: "a"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Int"}}},
-									{Name: &ast.Ident{Name: "b"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Float"}}},
-									{Name: &ast.Ident{Name: "c"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "String"}}},
-									{Name: &ast.Ident{Name: "d"}, Type: &ast.Field_NonNull{NonNull: &ast.NonNull{}}},
+							Fields: &ast.InputValueList{
+								List: []*ast.InputValue{
+									{Name: &ast.Ident{Name: "a"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Int"}}},
+									{Name: &ast.Ident{Name: "b"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Float"}}},
+									{Name: &ast.Ident{Name: "c"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "String"}}},
+									{Name: &ast.Ident{Name: "d"}, Type: &ast.InputValue_NonNull{NonNull: &ast.NonNull{}}},
 								},
 							},
 						}},
@@ -373,11 +373,11 @@ func TestValue(t *testing.T) {
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-							Fields: &ast.FieldList{
-								List: []*ast.Field{
-									{Name: &ast.Ident{Name: "a"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Int"}}},
-									{Name: &ast.Ident{Name: "b"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "Float"}}},
-									{Name: &ast.Ident{Name: "c"}, Type: &ast.Field_Ident{Ident: &ast.Ident{Name: "String"}}},
+							Fields: &ast.InputValueList{
+								List: []*ast.InputValue{
+									{Name: &ast.Ident{Name: "a"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Int"}}},
+									{Name: &ast.Ident{Name: "b"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "Float"}}},
+									{Name: &ast.Ident{Name: "c"}, Type: &ast.InputValue_Ident{Ident: &ast.Ident{Name: "String"}}},
 								},
 							},
 						}},
@@ -657,13 +657,12 @@ directive @Input on FIELD`,
 			Src: `input A {}
 
 input B {
-	one(a: String): String
+	one: String
 }
 
 scalar String`,
 			Errs: []string{
 				fmt.Sprintf("%s: input object type must define one or more input fields", "A"),
-				fmt.Sprintf("%s:%s: input object fields cannot have arguments", "B", "one"),
 			},
 		},
 		{

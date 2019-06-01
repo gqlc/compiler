@@ -553,7 +553,7 @@ func TestMergeTypes(t *testing.T) {
 				Name: &ast.Ident{Name: "Test"},
 				Doc:  new(ast.DocGroup),
 				Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-					Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+					Fields: &ast.InputValueList{List: make([]*ast.InputValue, 10)},
 				}},
 				Directives: make([]*ast.DirectiveLit, 5),
 			},
@@ -564,7 +564,7 @@ func TestMergeTypes(t *testing.T) {
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+						Fields: &ast.InputValueList{List: make([]*ast.InputValue, 10)},
 					}},
 				},
 			},
@@ -825,7 +825,7 @@ func TestMergeTypes(t *testing.T) {
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+						Fields: &ast.InputValueList{List: make([]*ast.InputValue, 10)},
 					}},
 				},
 			},
@@ -836,7 +836,7 @@ func TestMergeTypes(t *testing.T) {
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Input{Input: &ast.InputType{
-						Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
+						Fields: &ast.InputValueList{List: make([]*ast.InputValue, 10)},
 					}},
 				},
 			},

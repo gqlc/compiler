@@ -123,11 +123,11 @@ var Types = []*ast.TypeDecl{
 				Name: &ast.Ident{Name: "skip"},
 				Type: &ast.TypeSpec_Directive{
 					Directive: &ast.DirectiveType{
-						Args: &ast.FieldList{
-							List: []*ast.Field{
+						Args: &ast.InputValueList{
+							List: []*ast.InputValue{
 								{
 									Name: &ast.Ident{Name: "if"},
-									Type: &ast.Field_NonNull{
+									Type: &ast.InputValue_NonNull{
 										NonNull: &ast.NonNull{
 											Type: &ast.NonNull_Ident{
 												Ident: &ast.Ident{Name: "Boolean"},
@@ -160,11 +160,11 @@ var Types = []*ast.TypeDecl{
 				Name: &ast.Ident{Name: "include"},
 				Type: &ast.TypeSpec_Directive{
 					Directive: &ast.DirectiveType{
-						Args: &ast.FieldList{
-							List: []*ast.Field{
+						Args: &ast.InputValueList{
+							List: []*ast.InputValue{
 								{
 									Name: &ast.Ident{Name: "if"},
-									Type: &ast.Field_NonNull{
+									Type: &ast.InputValue_NonNull{
 										NonNull: &ast.NonNull{
 											Type: &ast.NonNull_Ident{
 												Ident: &ast.Ident{Name: "Boolean"},
@@ -197,14 +197,14 @@ var Types = []*ast.TypeDecl{
 				Name: &ast.Ident{Name: "deprecated"},
 				Type: &ast.TypeSpec_Directive{
 					Directive: &ast.DirectiveType{
-						Args: &ast.FieldList{
-							List: []*ast.Field{
+						Args: &ast.InputValueList{
+							List: []*ast.InputValue{
 								{
 									Name: &ast.Ident{Name: "reason"},
-									Type: &ast.Field_Ident{
+									Type: &ast.InputValue_Ident{
 										Ident: &ast.Ident{Name: "String"},
 									},
-									Default: &ast.Field_BasicLit{
+									Default: &ast.InputValue_BasicLit{
 										BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: "No longer supported"},
 									},
 								},
@@ -466,16 +466,16 @@ func validateUnion(name string, union *ast.UnionType, items map[string]*ast.Type
 }
 
 // validateArgDefs validates a list of argument definitions
-func validateArgDefs(name string, args []*ast.Field, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateArgDefs(name string, args []*ast.InputValue, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
 	aMap := make(map[string]struct {
-		field *ast.Field
+		field *ast.InputValue
 		count int
 	})
 	for _, f := range args {
 		i, exists := aMap[f.Name.Name]
 		if !exists {
 			i = struct {
-				field *ast.Field
+				field *ast.InputValue
 				count int
 			}{field: f}
 			aMap[f.Name.Name] = i
@@ -504,13 +504,13 @@ func validateArgDefs(name string, args []*ast.Field, items map[string]*ast.TypeD
 		var id *ast.Ident
 		var valType interface{}
 		switch v := a.field.Type.(type) {
-		case *ast.Field_Ident:
+		case *ast.InputValue_Ident:
 			valType = v.Ident
 			id = v.Ident
-		case *ast.Field_List:
+		case *ast.InputValue_List:
 			valType = v.List
 			id = unwrapType(v.List)
-		case *ast.Field_NonNull:
+		case *ast.InputValue_NonNull:
 			valType = v.NonNull
 			id = unwrapType(v.NonNull)
 		default:
@@ -525,9 +525,9 @@ func validateArgDefs(name string, args []*ast.Field, items map[string]*ast.TypeD
 
 		// Validate any default value provided
 		switch v := a.field.Default.(type) {
-		case *ast.Field_BasicLit:
+		case *ast.InputValue_BasicLit:
 			validateValue(name, aname, a, v.BasicLit, valType, items, errs)
-		case *ast.Field_CompositeLit:
+		case *ast.InputValue_CompositeLit:
 			validateValue(name, aname, a, v.CompositeLit, valType, items, errs)
 		}
 
@@ -582,16 +582,12 @@ func validateFields(name string, fields []*ast.Field, items map[string]*ast.Type
 
 		// Validate field type is an OutputType
 		var id *ast.Ident
-		var valType interface{}
 		switch v := f.field.Type.(type) {
 		case *ast.Field_Ident:
-			valType = v.Ident
 			id = v.Ident
 		case *ast.Field_List:
-			valType = v.List
 			id = unwrapType(v.List)
 		case *ast.Field_NonNull:
-			valType = v.NonNull
 			id = unwrapType(v.NonNull)
 		default:
 			panic(fmt.Sprintf("compiler: %s:%s: field must have a type", name, fname))
@@ -601,14 +597,6 @@ func validateFields(name string, fields []*ast.Field, items map[string]*ast.Type
 			*errs = append(*errs, &TypeError{
 				Msg: fmt.Sprintf("%s:%s: field type must be a valid output type, not: %s", name, fname, id.Name),
 			})
-		}
-
-		// Validate any default value provided
-		switch v := f.field.Default.(type) {
-		case *ast.Field_BasicLit:
-			validateValue(name, fname, f, v.BasicLit, valType, items, errs)
-		case *ast.Field_CompositeLit:
-			validateValue(name, fname, f, v.CompositeLit, valType, items, errs)
 		}
 
 		if len(f.field.Directives) > 0 {
@@ -648,14 +636,7 @@ func validateInput(name string, input *ast.InputType, items map[string]*ast.Type
 		return
 	}
 
-	fMap := validateFields(name, input.Fields.List, items, errs)
-	for fname, f := range fMap {
-		if f.field.Args != nil {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: input object fields cannot have arguments", name, fname),
-			})
-		}
-	}
+	validateArgDefs(name, input.Fields.List, items, errs)
 }
 
 // validateObject validates an object declaration
@@ -790,11 +771,11 @@ func validateInterfaceFields(objName, interName string, objFields map[string]str
 			}
 
 			switch v := oa.Type.(type) {
-			case *ast.Field_Ident:
+			case *ast.InputValue_Ident:
 				a = v.Ident
-			case *ast.Field_List:
+			case *ast.InputValue_List:
 				a = v.List
-			case *ast.Field_NonNull:
+			case *ast.InputValue_NonNull:
 				a = v.NonNull
 			}
 
@@ -812,11 +793,11 @@ func validateInterfaceFields(objName, interName string, objFields map[string]str
 			delete(aMap, ia.Name.Name)
 
 			switch v := ia.Type.(type) {
-			case *ast.Field_Ident:
+			case *ast.InputValue_Ident:
 				b = v.Ident
-			case *ast.Field_List:
+			case *ast.InputValue_List:
 				b = v.List
-			case *ast.Field_NonNull:
+			case *ast.InputValue_NonNull:
 				b = v.NonNull
 			}
 
@@ -1195,13 +1176,13 @@ func validateDirective(name string, directive *ast.DirectiveType, items map[stri
 		var id *ast.Ident
 		var valType interface{}
 		switch v := f.Type.(type) {
-		case *ast.Field_Ident:
+		case *ast.InputValue_Ident:
 			valType = v.Ident
 			id = v.Ident
-		case *ast.Field_List:
+		case *ast.InputValue_List:
 			valType = v.List
 			id = unwrapType(v.List)
-		case *ast.Field_NonNull:
+		case *ast.InputValue_NonNull:
 			valType = v.NonNull
 			id = unwrapType(v.NonNull)
 		default:
@@ -1216,9 +1197,9 @@ func validateDirective(name string, directive *ast.DirectiveType, items map[stri
 
 		// 3. Validate any default value provided
 		switch v := f.Default.(type) {
-		case *ast.Field_BasicLit:
+		case *ast.InputValue_BasicLit:
 			validateValue(name, f.Name.Name, f, v.BasicLit, valType, items, errs)
-		case *ast.Field_CompositeLit:
+		case *ast.InputValue_CompositeLit:
 			validateValue(name, f.Name.Name, f, v.CompositeLit, valType, items, errs)
 		}
 
@@ -1240,7 +1221,7 @@ func validateDirective(name string, directive *ast.DirectiveType, items map[stri
 }
 
 // validateArgs validates a list of args. host can either be
-func validateArgs(host string, argDefs []*ast.Field, args []*ast.Arg, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateArgs(host string, argDefs []*ast.InputValue, args []*ast.Arg, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
 	argMap := make(map[string]struct {
 		arg   *ast.Arg
 		count int
@@ -1277,11 +1258,11 @@ func validateArgs(host string, argDefs []*ast.Field, args []*ast.Arg, items map[
 		// Extract value and value type for arg
 		var val, valType interface{}
 		switch v := argDef.Type.(type) {
-		case *ast.Field_Ident:
+		case *ast.InputValue_Ident:
 			valType = v.Ident
-		case *ast.Field_List:
+		case *ast.InputValue_List:
 			valType = v.List
-		case *ast.Field_NonNull:
+		case *ast.InputValue_NonNull:
 			valType = v.NonNull
 		}
 
@@ -1507,15 +1488,15 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 		// Coerce single lit to list
 		listLit := new(ast.ListLit)
 		switch w := c.(type) {
-		case *ast.Field:
+		case *ast.InputValue:
 			switch x := w.Default.(type) {
-			case *ast.Field_BasicLit:
+			case *ast.InputValue_BasicLit:
 				listLit.List = &ast.ListLit_BasicList{
 					BasicList: &ast.ListLit_Basic{
 						Values: []*ast.BasicLit{x.BasicLit},
 					},
 				}
-			case *ast.Field_CompositeLit:
+			case *ast.InputValue_CompositeLit:
 				listLit.List = &ast.ListLit_CompositeList{
 					CompositeList: &ast.ListLit_Composite{
 						Values: []*ast.CompositeLit{x.CompositeLit},
@@ -1523,7 +1504,7 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 				}
 			}
 
-			w.Default = &ast.Field_CompositeLit{CompositeLit: &ast.CompositeLit{
+			w.Default = &ast.InputValue_CompositeLit{CompositeLit: &ast.CompositeLit{
 				Value: &ast.CompositeLit_ListLit{
 					ListLit: listLit,
 				},
@@ -1594,7 +1575,7 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 }
 
 // validateObj validates an input value
-func validateObj(host, arg string, fieldDefs []*ast.Field, objFields []*ast.ObjLit_Pair, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateObj(host, arg string, fieldDefs []*ast.InputValue, objFields []*ast.ObjLit_Pair, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
 	objFieldMap := make(map[string]struct {
 		objField *ast.ObjLit_Pair
 		count    int
@@ -1630,11 +1611,11 @@ func validateObj(host, arg string, fieldDefs []*ast.Field, objFields []*ast.ObjL
 		// Extract value and value type for arg
 		var val, valType interface{}
 		switch v := fieldDef.Type.(type) {
-		case *ast.Field_Ident:
+		case *ast.InputValue_Ident:
 			valType = v.Ident
-		case *ast.Field_List:
+		case *ast.InputValue_List:
 			valType = v.List
-		case *ast.Field_NonNull:
+		case *ast.InputValue_NonNull:
 			valType = v.NonNull
 		}
 

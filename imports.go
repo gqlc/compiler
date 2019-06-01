@@ -19,6 +19,7 @@ func (e *ImportError) Error() string {
 
 // node extends a ast.Document with its imports as children, thus
 // creating a tree structure which can be walked.
+//
 type node struct {
 	Imported bool
 	Childs   []*node
@@ -121,6 +122,7 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 
 func resolveImports(root *node) (err error) {
 	typeMap := make(map[string]*ast.TypeDecl)
+	directives := make(map[string]*ast.DirectiveLit)
 	defer func() {
 		// Convert type map to type slice
 		i := 0
@@ -129,7 +131,19 @@ func resolveImports(root *node) (err error) {
 			root.Types[i] = v
 			i++
 		}
+
+		for _, d := range directives {
+			root.Directives = append(root.Directives, d)
+		}
 	}()
+
+	// Collect root directives
+	for _, d := range root.Directives {
+		directives[d.Name] = d
+	}
+	if root.Directives != nil {
+		root.Directives = root.Directives[:0]
+	}
 
 	// Add root types to typeMap
 	err = addTypes(root, typeMap, func(name string, decl *ast.TypeDecl, decls map[string]*ast.TypeDecl) bool {
@@ -156,6 +170,14 @@ func resolveImports(root *node) (err error) {
 
 	// Walk import graph
 	err = walk(q, typeMap, func(n *node, decls map[string]*ast.TypeDecl) error {
+		// Collect directives
+		for _, d := range n.Directives {
+			if _, exists := directives[d.Name]; !exists {
+				directives[d.Name] = d
+			}
+		}
+
+		// Collect types
 		return addTypes(n, decls, func(name string, decl *ast.TypeDecl, types map[string]*ast.TypeDecl) bool {
 			// Check if builtin type
 			if isBuiltinType(name) {
@@ -423,7 +445,7 @@ func mergeExprs(o, n interface{}) (e interface{}) {
 
 		e = &ast.TypeSpec_Input{
 			Input: &ast.InputType{
-				Fields: &ast.FieldList{
+				Fields: &ast.InputValueList{
 					List: append(u.Input.Fields.List, v.Input.Fields.List...),
 				},
 			},
@@ -482,12 +504,12 @@ func addTypes(n *node, typeMap map[string]*ast.TypeDecl, add func(string, *ast.T
 		case *ast.TypeSpec_Enum:
 			// TODO: probably should resolve directives here
 		case *ast.TypeSpec_Input:
-			err = resolveFieldList(n.Name, v.Input.Fields, typeMap, add)
+			err = resolveArgList(n.Name, v.Input.Fields, typeMap, add)
 			if err != nil {
 				return err
 			}
 		case *ast.TypeSpec_Directive:
-			err = resolveFieldList(n.Name, v.Directive.Args, typeMap, add)
+			err = resolveArgList(n.Name, v.Directive.Args, typeMap, add)
 			if err != nil {
 				return err
 			}
@@ -503,7 +525,7 @@ func resolveFieldList(name string, fields *ast.FieldList, typeMap map[string]*as
 	}
 
 	for _, f := range fields.List {
-		err = resolveFieldList(name, f.Args, typeMap, add)
+		err = resolveArgList(name, f.Args, typeMap, add)
 		if err != nil {
 			return
 		}
@@ -515,6 +537,28 @@ func resolveFieldList(name string, fields *ast.FieldList, typeMap map[string]*as
 		case *ast.Field_NonNull:
 			t = unwrapType(v.NonNull)
 		case *ast.Field_List:
+			t = unwrapType(v.List)
+		default:
+			return
+		}
+		add(t.Name, nil, typeMap)
+	}
+	return
+}
+
+func resolveArgList(name string, fields *ast.InputValueList, typeMap map[string]*ast.TypeDecl, add func(string, *ast.TypeDecl, map[string]*ast.TypeDecl) bool) (err error) {
+	if fields == nil {
+		return
+	}
+
+	for _, f := range fields.List {
+		var t *ast.Ident
+		switch v := f.Type.(type) {
+		case *ast.InputValue_Ident:
+			t = v.Ident
+		case *ast.InputValue_NonNull:
+			t = unwrapType(v.NonNull)
+		case *ast.InputValue_List:
 			t = unwrapType(v.List)
 		default:
 			return
