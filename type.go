@@ -62,7 +62,7 @@ func CheckTypes(docs []*ast.Document, checkers ...TypeChecker) (errs []*TypeErro
 //
 var Types = []*ast.TypeDecl{
 	{
-		Tok: int64(token.SCALAR),
+		Tok: token.Token_SCALAR,
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Int"},
@@ -73,7 +73,7 @@ var Types = []*ast.TypeDecl{
 		},
 	},
 	{
-		Tok: int64(token.SCALAR),
+		Tok: token.Token_SCALAR,
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Float"},
@@ -84,7 +84,7 @@ var Types = []*ast.TypeDecl{
 		},
 	},
 	{
-		Tok: int64(token.SCALAR),
+		Tok: token.Token_SCALAR,
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "String"},
@@ -95,7 +95,7 @@ var Types = []*ast.TypeDecl{
 		},
 	},
 	{
-		Tok: int64(token.SCALAR),
+		Tok: token.Token_SCALAR,
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Boolean"},
@@ -106,7 +106,7 @@ var Types = []*ast.TypeDecl{
 		},
 	},
 	{
-		Tok: int64(token.SCALAR),
+		Tok: token.Token_SCALAR,
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "ID"},
@@ -117,7 +117,7 @@ var Types = []*ast.TypeDecl{
 		},
 	},
 	{
-		Tok: int64(token.DIRECTIVE),
+		Tok: token.Token_DIRECTIVE,
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "skip"},
@@ -154,7 +154,7 @@ var Types = []*ast.TypeDecl{
 		},
 	},
 	{
-		Tok: int64(token.DIRECTIVE),
+		Tok: token.Token_DIRECTIVE,
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "include"},
@@ -191,7 +191,7 @@ var Types = []*ast.TypeDecl{
 		},
 	},
 	{
-		Tok: int64(token.DIRECTIVE),
+		Tok: token.Token_DIRECTIVE,
 		Spec: &ast.TypeDecl_TypeSpec{
 			TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "deprecated"},
@@ -205,7 +205,7 @@ var Types = []*ast.TypeDecl{
 										Ident: &ast.Ident{Name: "String"},
 									},
 									Default: &ast.InputValue_BasicLit{
-										BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: "No longer supported"},
+										BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: "No longer supported"},
 									},
 								},
 							},
@@ -266,40 +266,40 @@ func Validate(doc *ast.Document) (errs []*TypeError) {
 			case *ast.TypeSpec_Schema:
 				validateSchema(v.Schema, itemMap, &errs)
 
-				typ = token.SCHEMA
+				typ = token.Token_SCHEMA
 				loc = ast.DirectiveLocation_SCHEMA
 			case *ast.TypeSpec_Scalar:
-				typ = token.SCALAR
+				typ = token.Token_SCALAR
 				loc = ast.DirectiveLocation_SCALAR
 			case *ast.TypeSpec_Enum:
 				validateEnum(ts.Name.Name, v.Enum, itemMap, &errs)
 
-				typ = token.ENUM
+				typ = token.Token_ENUM
 				loc = ast.DirectiveLocation_ENUM
 			case *ast.TypeSpec_Union:
 				validateUnion(ts.Name.Name, v.Union, itemMap, &errs)
 
-				typ = token.UNION
+				typ = token.Token_UNION
 				loc = ast.DirectiveLocation_UNION
 			case *ast.TypeSpec_Interface:
 				validateInterface(ts.Name.Name, v.Interface, itemMap, &errs)
 
-				typ = token.INTERFACE
+				typ = token.Token_INTERFACE
 				loc = ast.DirectiveLocation_INTERFACE
 			case *ast.TypeSpec_Input:
 				validateInput(ts.Name.Name, v.Input, itemMap, &errs)
 
-				typ = token.INPUT
+				typ = token.Token_INPUT
 				loc = ast.DirectiveLocation_INPUT_OBJECT
 			case *ast.TypeSpec_Object:
 				validateObject(ts.Name.Name, v.Object, itemMap, &errs)
 
-				typ = token.TYPE
+				typ = token.Token_TYPE
 				loc = ast.DirectiveLocation_OBJECT
 			case *ast.TypeSpec_Directive:
 				validateDirective(ts.Name.Name, v.Directive, itemMap, &errs)
 
-				typ = token.DIRECTIVE
+				typ = token.Token_DIRECTIVE
 			}
 
 			// Check type name
@@ -1360,36 +1360,36 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 		// Coerce builtin scalar types
 		switch u.Name {
 		case "Int":
-			if bLit.Kind != int64(token.INT) {
+			if bLit.Kind != token.Token_INT {
 				break
 			}
 
 			return
 		case "Float":
-			if bLit.Kind != int64(token.INT) && bLit.Kind != int64(token.FLOAT) {
+			if bLit.Kind != token.Token_INT && bLit.Kind != token.Token_FLOAT {
 				break
 			}
 
-			if bLit.Kind == int64(token.INT) {
+			if bLit.Kind == token.Token_INT {
 				bLit.Value += ".0"
 			}
 
-			bLit.Kind = int64(token.FLOAT)
+			bLit.Kind = token.Token_FLOAT
 			return
 		case "String":
-			if bLit.Kind != int64(token.STRING) {
+			if bLit.Kind != token.Token_STRING {
 				break
 			}
 
 			return
 		case "Boolean":
-			if bLit.Kind != int64(token.BOOL) {
+			if bLit.Kind != token.Token_BOOL {
 				break
 			}
 
 			return
 		case "ID":
-			if bLit.Kind != int64(token.STRING) && bLit.Kind != int64(token.INT) {
+			if bLit.Kind != token.Token_STRING && bLit.Kind != token.Token_INT {
 				break
 			}
 
@@ -1560,7 +1560,7 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 				break
 			}
 
-			if bLit.Kind == int64(token.NULL) {
+			if bLit.Kind == token.Token_NULL {
 				*errs = append(*errs, &TypeError{
 					Msg: fmt.Sprintf("%s:%s: non-null arg cannot be the null value", host, cName),
 				})

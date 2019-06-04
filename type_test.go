@@ -22,48 +22,48 @@ func TestValue(t *testing.T) {
 		{
 			Name:    "Basic:Int",
 			CName:   "intField",
-			Val:     &ast.BasicLit{Kind: int64(token.INT), Value: "2"},
+			Val:     &ast.BasicLit{Kind: token.Token_INT, Value: "2"},
 			ValType: &ast.Ident{Name: "Int"},
 		},
 		{
 			Name:    "Basic:Float:AsInt",
 			CName:   "intAsFloatField",
-			Val:     &ast.BasicLit{Kind: int64(token.INT), Value: "2"},
+			Val:     &ast.BasicLit{Kind: token.Token_INT, Value: "2"},
 			ValType: &ast.Ident{Name: "Float"},
 		},
 		{
 			Name:    "Basic:Float:AsFloat",
 			CName:   "floatAsFloatField",
-			Val:     &ast.BasicLit{Kind: int64(token.FLOAT), Value: "2.0"},
+			Val:     &ast.BasicLit{Kind: token.Token_FLOAT, Value: "2.0"},
 			ValType: &ast.Ident{Name: "Float"},
 		},
 		{
 			Name:    "Basic:String",
 			CName:   "stringField",
-			ValType: &ast.BasicLit{Kind: int64(token.STRING), Value: `"hello"`},
+			ValType: &ast.BasicLit{Kind: token.Token_STRING, Value: `"hello"`},
 		},
 		{
 			Name:    "Basic:Boolean",
 			CName:   "boolField",
-			Val:     &ast.BasicLit{Kind: int64(token.BOOL), Value: "true"},
+			Val:     &ast.BasicLit{Kind: token.Token_BOOL, Value: "true"},
 			ValType: &ast.Ident{Name: "Boolean"},
 		},
 		{
 			Name:    "Basic:ID:String",
 			CName:   "stringAsIDField",
-			Val:     &ast.BasicLit{Kind: int64(token.STRING), Value: `"erbgoayueboguyvabef"`},
+			Val:     &ast.BasicLit{Kind: token.Token_STRING, Value: `"erbgoayueboguyvabef"`},
 			ValType: &ast.Ident{Name: "ID"},
 		},
 		{
 			Name:    "Basic:ID:Int",
 			CName:   "intAsIDField",
-			Val:     &ast.BasicLit{Kind: int64(token.INT), Value: "2"},
+			Val:     &ast.BasicLit{Kind: token.Token_INT, Value: "2"},
 			ValType: &ast.Ident{Name: "ID"},
 		},
 		{
 			Name:    "Basic:Ident:EnumValue",
 			CName:   "enumValue",
-			Val:     &ast.BasicLit{Kind: int64(token.IDENT), Value: "ONE"},
+			Val:     &ast.BasicLit{Kind: token.Token_IDENT, Value: "ONE"},
 			ValType: &ast.Ident{Name: "Test"},
 			Items: map[string]*ast.TypeDecl{
 				"Test": {
@@ -83,7 +83,7 @@ func TestValue(t *testing.T) {
 		{
 			Name:    "Basic:Ident:UnknownEnumValue",
 			CName:   "unknownEnumValue",
-			Val:     &ast.BasicLit{Kind: int64(token.IDENT), Value: "TWO"},
+			Val:     &ast.BasicLit{Kind: token.Token_IDENT, Value: "TWO"},
 			ValType: &ast.Ident{Name: "Test"},
 			Items: map[string]*ast.TypeDecl{
 				"Test": {
@@ -106,10 +106,10 @@ func TestValue(t *testing.T) {
 		{
 			Name:    "Basic:InvalidInputValue",
 			CName:   "invalidInputValueForField",
-			Val:     &ast.BasicLit{Kind: int64(token.INT), Value: "2"},
+			Val:     &ast.BasicLit{Kind: token.Token_INT, Value: "2"},
 			ValType: &ast.Ident{Name: "String"},
 			Errs: []string{
-				fmt.Sprintf("%s:%s: %s is not coercible to: %s", "Basic:InvalidInputValue", "invalidInputValueForField", token.INT, "String"),
+				fmt.Sprintf("%s:%s: %s is not coercible to: %s", "Basic:InvalidInputValue", "invalidInputValueForField", token.Token_INT, "String"),
 			},
 		},
 		{
@@ -117,9 +117,9 @@ func TestValue(t *testing.T) {
 			CName: "inputObject",
 			Val: &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{ObjLit: &ast.ObjLit{
 				Fields: []*ast.ObjLit_Pair{
-					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}}},
-					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.FLOAT), Value: "2.0"}}}},
-					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: `"2"`}}}},
+					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}}},
+					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_FLOAT, Value: "2.0"}}}},
+					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: `"2"`}}}},
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
@@ -191,9 +191,9 @@ func TestValue(t *testing.T) {
 			CName: "undefinedField",
 			Val: &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{ObjLit: &ast.ObjLit{
 				Fields: []*ast.ObjLit_Pair{
-					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}}},
-					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.FLOAT), Value: "2.0"}}}},
-					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: `"2"`}}}},
+					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}}},
+					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_FLOAT, Value: "2.0"}}}},
+					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: `"2"`}}}},
 					{Key: &ast.Ident{Name: "d"}},
 				},
 			}}},
@@ -223,9 +223,9 @@ func TestValue(t *testing.T) {
 			CName: "nonUniqueField",
 			Val: &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{ObjLit: &ast.ObjLit{
 				Fields: []*ast.ObjLit_Pair{
-					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}}},
-					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.FLOAT), Value: "2.0"}}}},
-					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: `"2"`}}}},
+					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}}},
+					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_FLOAT, Value: "2.0"}}}},
+					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: `"2"`}}}},
 					{Key: &ast.Ident{Name: "a"}},
 				},
 			}}},
@@ -255,9 +255,9 @@ func TestValue(t *testing.T) {
 			CName: "missingRequiredField",
 			Val: &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{ObjLit: &ast.ObjLit{
 				Fields: []*ast.ObjLit_Pair{
-					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}}},
-					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.FLOAT), Value: "2.0"}}}},
-					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: `"2"`}}}},
+					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}}},
+					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_FLOAT, Value: "2.0"}}}},
+					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: `"2"`}}}},
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
@@ -285,65 +285,65 @@ func TestValue(t *testing.T) {
 		{
 			Name:    "Composite:Basic:Int",
 			CName:   "intField",
-			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}},
+			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}},
 			ValType: &ast.Ident{Name: "Int"},
 		},
 		{
 			Name:    "Composite:Basic:Float:AsInt",
 			CName:   "intAsFloatField",
-			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}},
+			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}},
 			ValType: &ast.Ident{Name: "Float"},
 		},
 		{
 			Name:    "Composite:Basic:Float:AsFloat",
 			CName:   "floatAsFloatField",
-			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.FLOAT), Value: "2.0"}}},
+			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_FLOAT, Value: "2.0"}}},
 			ValType: &ast.Ident{Name: "Float"},
 		},
 		{
 			Name:    "Composite:Basic:String",
 			CName:   "stringField",
-			ValType: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: `"hello"`}}},
+			ValType: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: `"hello"`}}},
 		},
 		{
 			Name:    "Composite:Basic:Boolean",
 			CName:   "boolField",
-			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.BOOL), Value: "true"}}},
+			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_BOOL, Value: "true"}}},
 			ValType: &ast.Ident{Name: "Boolean"},
 		},
 		{
 			Name:    "Composite:Basic:ID:String",
 			CName:   "stringAsIDField",
-			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: `"erbgoayueboguyvabef"`}}},
+			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: `"erbgoayueboguyvabef"`}}},
 			ValType: &ast.Ident{Name: "ID"},
 		},
 		{
 			Name:    "Composite:Basic:ID:Int",
 			CName:   "intAsIDField",
-			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}},
+			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}},
 			ValType: &ast.Ident{Name: "ID"},
 		},
 		{
 			Name:    "Composite:Basic:InvalidInputValue",
 			CName:   "invalidInputValueForField",
-			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}},
+			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}},
 			ValType: &ast.Ident{Name: "String"},
 			Errs: []string{
-				fmt.Sprintf("%s:%s: %s is not coercible to: %s", "Basic:InvalidInputValue", "invalidInputValueForField", token.INT, "String"),
+				fmt.Sprintf("%s:%s: %s is not coercible to: %s", "Basic:InvalidInputValue", "invalidInputValueForField", token.Token_INT, "String"),
 			},
 		},
 		{
 			Name:    "List:BasicLitAsList",
 			CName:   "basicLitAsList",
-			C:       &ast.Arg{Value: &ast.Arg_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}},
-			Val:     &ast.BasicLit{Kind: int64(token.INT), Value: "2"},
+			C:       &ast.Arg{Value: &ast.Arg_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}},
+			Val:     &ast.BasicLit{Kind: token.Token_INT, Value: "2"},
 			ValType: &ast.List{Type: &ast.List_Ident{Ident: &ast.Ident{Name: "Int"}}},
 		},
 		{
 			Name:    "List:BasicLitAsListAsList",
 			CName:   "basicLitAsListAsList",
-			C:       &ast.Arg{Value: &ast.Arg_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}},
-			Val:     &ast.BasicLit{Kind: int64(token.INT), Value: "2"},
+			C:       &ast.Arg{Value: &ast.Arg_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}},
+			Val:     &ast.BasicLit{Kind: token.Token_INT, Value: "2"},
 			ValType: &ast.List{Type: &ast.List_List{List: &ast.List{Type: &ast.List_Ident{Ident: &ast.Ident{Name: "Int"}}}}},
 		},
 		{
@@ -353,18 +353,18 @@ func TestValue(t *testing.T) {
 				Value: &ast.CompositeLit_ObjLit{
 					ObjLit: &ast.ObjLit{
 						Fields: []*ast.ObjLit_Pair{
-							{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}}},
-							{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.FLOAT), Value: "2.0"}}}},
-							{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: `"2"`}}}},
+							{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}}},
+							{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_FLOAT, Value: "2.0"}}}},
+							{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: `"2"`}}}},
 						},
 					},
 				},
 			}}},
 			Val: &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{ObjLit: &ast.ObjLit{
 				Fields: []*ast.ObjLit_Pair{
-					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.INT), Value: "2"}}}},
-					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.FLOAT), Value: "2.0"}}}},
-					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: int64(token.STRING), Value: `"2"`}}}},
+					{Key: &ast.Ident{Name: "a"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_INT, Value: "2"}}}},
+					{Key: &ast.Ident{Name: "b"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_FLOAT, Value: "2.0"}}}},
+					{Key: &ast.Ident{Name: "c"}, Val: &ast.CompositeLit{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Kind: token.Token_STRING, Value: `"2"`}}}},
 				},
 			}}},
 			ValType: &ast.List{Type: &ast.List_Ident{Ident: &ast.Ident{Name: "Test"}}},
@@ -388,7 +388,7 @@ func TestValue(t *testing.T) {
 		{
 			Name:    "NonNull:InvalidValue",
 			CName:   "invalidValue",
-			Val:     &ast.BasicLit{Kind: int64(token.NULL), Value: "null"},
+			Val:     &ast.BasicLit{Kind: token.Token_NULL, Value: "null"},
 			ValType: &ast.NonNull{Type: &ast.NonNull_Ident{Ident: &ast.Ident{Name: "String"}}},
 			Errs: []string{
 				fmt.Sprintf("%s:%s: non-null arg cannot be the null value", "NonNull:InvalidValue", "invalidValue"),
@@ -590,7 +590,7 @@ func TestValidate(t *testing.T) {
 		{
 			Name: "InvalidName",
 			Src:  `scalar __Int`,
-			Errs: []string{fmt.Sprintf("%s is an invalid name for type: %s", "__Int", token.SCALAR)},
+			Errs: []string{fmt.Sprintf("%s is an invalid name for type: %s", "__Int", token.Token_SCALAR)},
 		},
 		{
 			Name: "InvalidDirectives",

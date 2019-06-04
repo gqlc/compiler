@@ -328,7 +328,6 @@ func TestMergeTypes(t *testing.T) {
 					TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "test"},
 						Type: &ast.TypeSpec_Schema{Schema: &ast.SchemaType{RootOps: &ast.FieldList{List: make([]*ast.Field, 10)}}},
-						Doc:  new(ast.DocGroup),
 					},
 				},
 			},
@@ -339,7 +338,6 @@ func TestMergeTypes(t *testing.T) {
 							Type:       &ast.TypeSpec_Schema{Schema: &ast.SchemaType{RootOps: &ast.FieldList{List: make([]*ast.Field, 20)}}},
 							Directives: make([]*ast.DirectiveLit, 10),
 						},
-						Doc: new(ast.DocGroup),
 					},
 				},
 			},
@@ -367,7 +365,6 @@ func TestMergeTypes(t *testing.T) {
 					TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Scalar{Scalar: &ast.ScalarType{Name: &ast.Ident{Name: "Test"}}},
-						Doc:  new(ast.DocGroup),
 					},
 				},
 			},
@@ -376,7 +373,6 @@ func TestMergeTypes(t *testing.T) {
 					Type:       &ast.TypeSpec_Scalar{Scalar: &ast.ScalarType{}},
 					Directives: make([]*ast.DirectiveLit, 10),
 				},
-				Doc: new(ast.DocGroup),
 			},
 			},
 			},
@@ -393,7 +389,6 @@ func TestMergeTypes(t *testing.T) {
 			Name: "Ext->Spec:object",
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
-				Doc:  new(ast.DocGroup),
 				Type: &ast.TypeSpec_Object{Object: &ast.ObjectType{
 					Interfaces: make([]*ast.Ident, 10),
 					Fields:     &ast.FieldList{List: make([]*ast.Field, 10)},
@@ -404,7 +399,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Type: &ast.TypeSpec_Object{Object: &ast.ObjectType{
 						Interfaces: make([]*ast.Ident, 10),
@@ -440,7 +434,6 @@ func TestMergeTypes(t *testing.T) {
 			Name: "Ext->Spec:interface",
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
-				Doc:  new(ast.DocGroup),
 				Type: &ast.TypeSpec_Interface{Interface: &ast.InterfaceType{
 					Fields: &ast.FieldList{List: make([]*ast.Field, 10)},
 				}},
@@ -449,7 +442,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Interface{Interface: &ast.InterfaceType{
@@ -477,7 +469,6 @@ func TestMergeTypes(t *testing.T) {
 			Name: "Ext->Spec:enum",
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
-				Doc:  new(ast.DocGroup),
 				Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
 					Values: &ast.FieldList{List: make([]*ast.Field, 10)},
 				}},
@@ -486,7 +477,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
@@ -514,7 +504,6 @@ func TestMergeTypes(t *testing.T) {
 			Name: "Ext->Spec:union",
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
-				Doc:  new(ast.DocGroup),
 				Type: &ast.TypeSpec_Union{Union: &ast.UnionType{
 					Members: make([]*ast.Ident, 10),
 				}},
@@ -523,7 +512,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Union{Union: &ast.UnionType{
@@ -551,7 +539,6 @@ func TestMergeTypes(t *testing.T) {
 			Name: "Ext->Spec:input",
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 				Name: &ast.Ident{Name: "Test"},
-				Doc:  new(ast.DocGroup),
 				Type: &ast.TypeSpec_Input{Input: &ast.InputType{
 					Fields: &ast.InputValueList{List: make([]*ast.InputValue, 10)},
 				}},
@@ -560,7 +547,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -589,7 +575,6 @@ func TestMergeTypes(t *testing.T) {
 		{
 			Name: "Ext->Ext:schema",
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Schema{Schema: &ast.SchemaType{
@@ -600,7 +585,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Schema{Schema: &ast.SchemaType{
@@ -628,7 +612,6 @@ func TestMergeTypes(t *testing.T) {
 		{
 			Name: "Ext->Ext:scalar",
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type:       &ast.TypeSpec_Scalar{Scalar: &ast.ScalarType{}},
@@ -637,7 +620,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type:       &ast.TypeSpec_Scalar{Scalar: &ast.ScalarType{}},
@@ -658,7 +640,6 @@ func TestMergeTypes(t *testing.T) {
 		{
 			Name: "Ext->Ext:object",
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Object{Object: &ast.ObjectType{
@@ -671,7 +652,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Object{Object: &ast.ObjectType{
@@ -704,7 +684,6 @@ func TestMergeTypes(t *testing.T) {
 		{
 			Name: "Ext->Ext:interface",
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Interface{Interface: &ast.InterfaceType{
@@ -715,7 +694,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Interface{Interface: &ast.InterfaceType{
@@ -743,7 +721,6 @@ func TestMergeTypes(t *testing.T) {
 		{
 			Name: "Ext->Ext:enum",
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
@@ -754,7 +731,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
@@ -782,7 +758,6 @@ func TestMergeTypes(t *testing.T) {
 		{
 			Name: "Ext->Ext:union",
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Union{Union: &ast.UnionType{
@@ -793,7 +768,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Union{Union: &ast.UnionType{
@@ -821,7 +795,6 @@ func TestMergeTypes(t *testing.T) {
 		{
 			Name: "Ext->Ext:input",
 			Old: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -832,7 +805,6 @@ func TestMergeTypes(t *testing.T) {
 			},
 			},
 			New: &ast.TypeDecl{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{
-				Doc: new(ast.DocGroup),
 				Type: &ast.TypeSpec{
 					Directives: make([]*ast.DirectiveLit, 5),
 					Type: &ast.TypeSpec_Input{Input: &ast.InputType{

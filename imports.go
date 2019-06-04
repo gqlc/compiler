@@ -302,7 +302,7 @@ func mergeTypes(o, n *ast.TypeDecl) *ast.TypeDecl {
 	nts, ntsOK := n.Spec.(*ast.TypeDecl_TypeSpec)
 
 	// Convert both to TypeSpecs if they aren't already
-	ts := &ast.TypeSpec{Doc: decl.Doc}
+	ts := &ast.TypeSpec{}
 	dts := &ast.TypeDecl_TypeSpec{TypeSpec: ts}
 	switch {
 	case otsOK && !ntsOK: // Old: Spec, New: Ext
@@ -315,7 +315,6 @@ func mergeTypes(o, n *ast.TypeDecl) *ast.TypeDecl {
 		ots = new(ast.TypeDecl_TypeSpec)
 		ext := o.Spec.(*ast.TypeDecl_TypeExtSpec).TypeExtSpec
 		ots.TypeSpec = ext.Type
-		ots.TypeSpec.Doc = ext.Doc
 	case !otsOK && !ntsOK: // Old: Ext, New: Ext
 		// Set new spec
 		decl.Spec = &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{Type: ts}}
@@ -326,14 +325,9 @@ func mergeTypes(o, n *ast.TypeDecl) *ast.TypeDecl {
 
 		ots, nts = new(ast.TypeDecl_TypeSpec), new(ast.TypeDecl_TypeSpec)
 		ots.TypeSpec, nts.TypeSpec = oext.TypeExtSpec.Type, next.TypeExtSpec.Type
-		ots.TypeSpec.Doc, nts.TypeSpec.Doc = oext.TypeExtSpec.Doc, next.TypeExtSpec.Doc
 	default:
 		panic("compiler: unexpected merging of TypeSpec and TypeSpec")
 	}
-
-	// Merge doc groups
-	ts.Doc.List = append(ts.Doc.List, ots.TypeSpec.Doc.List...)
-	ts.Doc.List = append(ts.Doc.List, nts.TypeSpec.Doc.List...)
 
 	// Merge type
 	t := mergeExprs(ots.TypeSpec.Type, nts.TypeSpec.Type)
