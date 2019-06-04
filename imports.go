@@ -76,7 +76,19 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 
 			imps := dir.Args.Args[0]
 			compList := imps.Value.(*ast.Arg_CompositeLit).CompositeLit.Value.(*ast.CompositeLit_ListLit)
-			paths := compList.ListLit.List.(*ast.ListLit_BasicList).BasicList.Values
+
+			var paths []*ast.BasicLit
+			switch v := compList.ListLit.List.(type) {
+			case *ast.ListLit_BasicList:
+				paths = append(paths, v.BasicList.Values...)
+			case *ast.ListLit_CompositeList:
+				cpaths := v.CompositeList.Values
+				paths = make([]*ast.BasicLit, len(cpaths))
+				for i, c := range cpaths {
+					paths[i] = c.Value.(*ast.CompositeLit_BasicLit).BasicLit
+				}
+			}
+
 			for _, imp := range paths {
 				path := strings.Trim(imp.Value, "\"")
 				id := dMap[path]

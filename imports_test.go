@@ -21,11 +21,11 @@ func TestCreateImportTries(t *testing.T) {
 				CompositeLit: &ast.CompositeLit{
 					Value: &ast.CompositeLit_ListLit{
 						ListLit: &ast.ListLit{
-							List: &ast.ListLit_BasicList{
-								BasicList: &ast.ListLit_Basic{
-									Values: []*ast.BasicLit{
-										{Value: "e"},
-										{Value: "f"},
+							List: &ast.ListLit_CompositeList{
+								CompositeList: &ast.ListLit_Composite{
+									Values: []*ast.CompositeLit{
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "e"}}},
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "f"}}},
 									},
 								},
 							},
@@ -43,11 +43,11 @@ func TestCreateImportTries(t *testing.T) {
 				CompositeLit: &ast.CompositeLit{
 					Value: &ast.CompositeLit_ListLit{
 						ListLit: &ast.ListLit{
-							List: &ast.ListLit_BasicList{
-								BasicList: &ast.ListLit_Basic{
-									Values: []*ast.BasicLit{
-										{Value: "g"},
-										{Value: "h"},
+							List: &ast.ListLit_CompositeList{
+								CompositeList: &ast.ListLit_Composite{
+									Values: []*ast.CompositeLit{
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "g"}}},
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "h"}}},
 									},
 								},
 							},
@@ -62,11 +62,11 @@ func TestCreateImportTries(t *testing.T) {
 				CompositeLit: &ast.CompositeLit{
 					Value: &ast.CompositeLit_ListLit{
 						ListLit: &ast.ListLit{
-							List: &ast.ListLit_BasicList{
-								BasicList: &ast.ListLit_Basic{
-									Values: []*ast.BasicLit{
-										{Value: "i"},
-										{Value: "j"},
+							List: &ast.ListLit_CompositeList{
+								CompositeList: &ast.ListLit_Composite{
+									Values: []*ast.CompositeLit{
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "i"}}},
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "j"}}},
 									},
 								},
 							},
@@ -87,11 +87,11 @@ func TestCreateImportTries(t *testing.T) {
 				CompositeLit: &ast.CompositeLit{
 					Value: &ast.CompositeLit_ListLit{
 						ListLit: &ast.ListLit{
-							List: &ast.ListLit_BasicList{
-								BasicList: &ast.ListLit_Basic{
-									Values: []*ast.BasicLit{
-										{Value: "e"},
-										{Value: "f"},
+							List: &ast.ListLit_CompositeList{
+								CompositeList: &ast.ListLit_Composite{
+									Values: []*ast.CompositeLit{
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "e"}}},
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "f"}}},
 									},
 								},
 							},
@@ -109,11 +109,11 @@ func TestCreateImportTries(t *testing.T) {
 				CompositeLit: &ast.CompositeLit{
 					Value: &ast.CompositeLit_ListLit{
 						ListLit: &ast.ListLit{
-							List: &ast.ListLit_BasicList{
-								BasicList: &ast.ListLit_Basic{
-									Values: []*ast.BasicLit{
-										{Value: "e"},
-										{Value: "h"},
+							List: &ast.ListLit_CompositeList{
+								CompositeList: &ast.ListLit_Composite{
+									Values: []*ast.CompositeLit{
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "e"}}},
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "h"}}},
 									},
 								},
 							},
@@ -128,11 +128,11 @@ func TestCreateImportTries(t *testing.T) {
 				CompositeLit: &ast.CompositeLit{
 					Value: &ast.CompositeLit_ListLit{
 						ListLit: &ast.ListLit{
-							List: &ast.ListLit_BasicList{
-								BasicList: &ast.ListLit_Basic{
-									Values: []*ast.BasicLit{
-										{Value: "h"},
-										{Value: "f"},
+							List: &ast.ListLit_CompositeList{
+								CompositeList: &ast.ListLit_Composite{
+									Values: []*ast.CompositeLit{
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "h"}}},
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "f"}}},
 									},
 								},
 							},
@@ -249,10 +249,10 @@ func TestImportCycle(t *testing.T) {
 				CompositeLit: &ast.CompositeLit{
 					Value: &ast.CompositeLit_ListLit{
 						ListLit: &ast.ListLit{
-							List: &ast.ListLit_BasicList{
-								BasicList: &ast.ListLit_Basic{
-									Values: []*ast.BasicLit{
-										{Value: "b"},
+							List: &ast.ListLit_CompositeList{
+								CompositeList: &ast.ListLit_Composite{
+									Values: []*ast.CompositeLit{
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "b"}}},
 									},
 								},
 							},
@@ -267,10 +267,10 @@ func TestImportCycle(t *testing.T) {
 				CompositeLit: &ast.CompositeLit{
 					Value: &ast.CompositeLit_ListLit{
 						ListLit: &ast.ListLit{
-							List: &ast.ListLit_BasicList{
-								BasicList: &ast.ListLit_Basic{
-									Values: []*ast.BasicLit{
-										{Value: "a"},
+							List: &ast.ListLit_CompositeList{
+								CompositeList: &ast.ListLit_Composite{
+									Values: []*ast.CompositeLit{
+										{Value: &ast.CompositeLit_BasicLit{BasicLit: &ast.BasicLit{Value: "a"}}},
 									},
 								},
 							},
