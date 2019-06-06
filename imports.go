@@ -597,16 +597,16 @@ func unwrapType(i interface{}) *ast.Ident {
 		case *ast.List_Ident:
 			return u.Ident
 		case *ast.List_List:
-			return unwrapType(v.Type)
+			return unwrapType(u.List)
 		case *ast.List_NonNull:
-			return unwrapType(v.Type)
+			return unwrapType(u.NonNull)
 		}
 	case *ast.NonNull:
 		switch u := v.Type.(type) {
 		case *ast.NonNull_Ident:
 			return u.Ident
 		case *ast.NonNull_List:
-			return unwrapType(v.Type)
+			return unwrapType(u.List)
 		}
 	}
 
