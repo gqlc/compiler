@@ -23,6 +23,7 @@ func (e *ImportError) Error() string {
 type node struct {
 	Imported bool
 	Childs   []*node
+	Types    map[string]*list.List
 	*ast.Document
 }
 
@@ -32,12 +33,12 @@ type node struct {
 // To import a Document the @import directive is used:
 // directive @import(paths: [String]) on DOCUMENT
 //
-func ReduceImports(docs []*ast.Document) ([]*ast.Document, error) {
+func ReduceImports(docs []*ast.Document) (map[*ast.Document]map[string]*list.List, error) {
 	// Map docs to nodes
 	dMap := make(map[string]*node, len(docs))
 	nodes := make([]*node, len(docs))
 	for i, doc := range docs {
-		n := &node{Document: doc}
+		n := &node{Types: ToIR(doc.Types), Document: doc}
 		dMap[doc.Name] = n
 		nodes[i] = n
 	}
@@ -57,9 +58,9 @@ func ReduceImports(docs []*ast.Document) ([]*ast.Document, error) {
 	}
 
 	// Unwrap nodes to *ast.Documents
-	rDocs := make([]*ast.Document, len(forest))
-	for i, trie := range forest {
-		rDocs[i] = trie.Document
+	rDocs := make(map[*ast.Document]map[string]*list.List, len(forest))
+	for _, trie := range forest {
+		rDocs[trie.Document] = trie.Types
 	}
 	return rDocs, nil
 }
@@ -132,18 +133,17 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 	return nodes, nil
 }
 
-func resolveImports(root *node) (err error) {
-	typeMap := make(map[string]*ast.TypeDecl)
+func resolveImports(root *node) error {
+	typeMap := make(map[string]*list.List)
 	directives := make(map[string]*ast.DirectiveLit)
 	defer func() {
-		// Convert type map to type slice
-		i := 0
-		root.Types = make([]*ast.TypeDecl, len(typeMap))
-		for _, v := range typeMap {
-			root.Types[i] = v
-			i++
-		}
+		removeBuiltins(typeMap)
 
+		root.Types = typeMap
+
+		if root.Directives != nil {
+			root.Directives = root.Directives[:0]
+		}
 		for _, d := range directives {
 			root.Directives = append(root.Directives, d)
 		}
@@ -153,26 +153,21 @@ func resolveImports(root *node) (err error) {
 	for _, d := range root.Directives {
 		directives[d.Name] = d
 	}
-	if root.Directives != nil {
-		root.Directives = root.Directives[:0]
-	}
 
 	// Add root types to typeMap
-	err = addTypes(root, typeMap, func(name string, decl *ast.TypeDecl, decls map[string]*ast.TypeDecl) bool {
-		if isBuiltinType(name) {
-			return true
-		}
+	for name, decls := range root.Types {
+		typeMap[name] = decls
 
-		if tg, exists := decls[name]; exists && tg != nil {
-			return false
-		}
+		l := decls.Len()
+		for i := 0; i < l; i++ {
+			e := decls.Front()
 
-		decls[name] = decl
-		return false
-	})
-	if err != nil {
-		return
+			addDeps(e.Value.(*ast.TypeDecl), typeMap, root.Types)
+
+			decls.PushBack(e)
+		}
 	}
+	addTypes(root, typeMap)
 
 	// Create queue and populate with children of root node
 	q := list.New()
@@ -181,7 +176,7 @@ func resolveImports(root *node) (err error) {
 	}
 
 	// Walk import graph
-	err = walk(q, typeMap, func(n *node, decls map[string]*ast.TypeDecl) error {
+	return walk(q, typeMap, func(n *node, decls map[string]*list.List) {
 		// Collect directives
 		for _, d := range n.Directives {
 			if _, exists := directives[d.Name]; !exists {
@@ -190,113 +185,18 @@ func resolveImports(root *node) (err error) {
 		}
 
 		// Collect types
-		return addTypes(n, decls, func(name string, decl *ast.TypeDecl, types map[string]*ast.TypeDecl) bool {
-			// Check if builtin type
-			if isBuiltinType(name) {
-				return true
-			}
-
-			// Skip if it isn't imported or previously encountered peer type
-			_, exists := types[name]
-			switch {
-			case !exists && decl != nil:
-				return false
-			case exists && decl == nil:
-				return true
-			}
-
-			if decl == nil {
-				types[name] = decl
-				return false
-			}
-
-			v, exists := types[name]
-			switch {
-			case v == nil && exists:
-				types[name] = decl
-			case v != nil && v != decl:
-				types[name] = mergeTypes(v, decl)
-			}
-			return false
-		})
+		addTypes(n, decls)
 	})
-	if err != nil {
-		return
-	}
-
-	// Check for any un-imported peer types
-	peerMap := make(map[string]*ast.TypeDecl)
-	for name, tg := range typeMap {
-		if tg == nil {
-			peerMap[name] = nil
-		}
-	}
-	for len(peerMap) > 0 {
-		q = q.Init()
-		for _, c := range root.Childs {
-			q.PushBack(c)
-		}
-
-		// Walk import graph
-		err = walk(q, peerMap, func(n *node, decls map[string]*ast.TypeDecl) error {
-			return addTypes(n, decls, func(name string, decl *ast.TypeDecl, types map[string]*ast.TypeDecl) bool {
-				// Check if builtin type
-				if isBuiltinType(name) {
-					return true
-				}
-
-				// Skip if it isn't imported or previously encountered peer type
-				_, exists := types[name]
-				switch {
-				case !exists && decl != nil:
-					return false
-				case exists && decl == nil:
-					return true
-				}
-
-				if decl == nil {
-					types[name] = decl
-					return false
-				}
-
-				v, exists := types[name]
-				switch {
-				case v == nil && exists:
-					types[name] = decl
-				case v != nil && v != decl:
-					types[name] = mergeTypes(v, decl)
-				}
-				return false
-			})
-		})
-		if err != nil {
-			return
-		}
-
-		for name, tg := range peerMap {
-			if tg == nil {
-				continue
-			}
-
-			typeMap[name] = tg
-			delete(peerMap, name)
-		}
-	}
-
-	return
 }
 
 // walk preforms a breadth-first walk of the import graph
-func walk(q *list.List, typeMap map[string]*ast.TypeDecl, f func(*node, map[string]*ast.TypeDecl) error) (err error) {
+func walk(q *list.List, typeMap map[string]*list.List, f func(*node, map[string]*list.List)) (err error) {
 	for q.Len() > 0 {
 		v := q.Front()
 		q.Remove(v)
 
 		vn := v.Value.(*node)
-		err = f(vn, typeMap)
-		if err != nil {
-			return
-		}
+		f(vn, typeMap)
 
 		for _, c := range vn.Childs {
 			q.PushBack(c)
@@ -305,236 +205,83 @@ func walk(q *list.List, typeMap map[string]*ast.TypeDecl, f func(*node, map[stri
 	return
 }
 
-// mergeTypes handles merging TypeSpecExts with TypeSpecs or TypeSpecExts w/ TypeSpecExts
-func mergeTypes(o, n *ast.TypeDecl) *ast.TypeDecl {
-	decl := &ast.TypeDecl{Doc: &ast.DocGroup{}}
-
-	// Try asserting to TypeSpecs
-	ots, otsOK := o.Spec.(*ast.TypeDecl_TypeSpec)
-	nts, ntsOK := n.Spec.(*ast.TypeDecl_TypeSpec)
-
-	// Convert both to TypeSpecs if they aren't already
-	ts := &ast.TypeSpec{}
-	dts := &ast.TypeDecl_TypeSpec{TypeSpec: ts}
-	switch {
-	case otsOK && !ntsOK: // Old: Spec, New: Ext
-		panic("compiler: circular import")
-	case !otsOK && ntsOK: // Old: Ext, New: Spec
-		// Set new spec
-		decl.Spec = dts
-
-		// Assert old to ext
-		ots = new(ast.TypeDecl_TypeSpec)
-		ext := o.Spec.(*ast.TypeDecl_TypeExtSpec).TypeExtSpec
-		ots.TypeSpec = ext.Type
-	case !otsOK && !ntsOK: // Old: Ext, New: Ext
-		// Set new spec
-		decl.Spec = &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{Type: ts}}
-
-		// Assert to old and new ext
-		oext := o.Spec.(*ast.TypeDecl_TypeExtSpec)
-		next := n.Spec.(*ast.TypeDecl_TypeExtSpec)
-
-		ots, nts = new(ast.TypeDecl_TypeSpec), new(ast.TypeDecl_TypeSpec)
-		ots.TypeSpec, nts.TypeSpec = oext.TypeExtSpec.Type, next.TypeExtSpec.Type
-	default:
-		panic("compiler: unexpected merging of TypeSpec and TypeSpec")
-	}
-
-	// Merge type
-	t := mergeExprs(ots.TypeSpec.Type, nts.TypeSpec.Type)
-	switch v := t.(type) {
-	case *ast.TypeSpec_Schema:
-		ts.Type = v
-	case *ast.TypeSpec_Scalar:
-		ts.Type = v
-	case *ast.TypeSpec_Object:
-		ts.Type = v
-	case *ast.TypeSpec_Interface:
-		ts.Type = v
-	case *ast.TypeSpec_Union:
-		ts.Type = v
-	case *ast.TypeSpec_Enum:
-		ts.Type = v
-	case *ast.TypeSpec_Input:
-		ts.Type = v
-	case *ast.TypeSpec_Directive:
-		ts.Type = v
-	}
-
-	// Add name and directives
-	ts.Name = ots.TypeSpec.Name
-	ts.Directives = append(ts.Directives, ots.TypeSpec.Directives...)
-	ts.Directives = append(ts.Directives, nts.TypeSpec.Directives...)
-
-	return decl
-}
-
-func mergeExprs(o, n interface{}) (e interface{}) {
-	switch u := o.(type) {
-	case *ast.TypeSpec_Schema:
-		v, ok := n.(*ast.TypeSpec_Schema)
+func addTypes(n *node, typeMap map[string]*list.List) {
+	for name, decls := range typeMap {
+		d, ok := n.Types[name]
 		if !ok {
-			panic("mismatched types")
-		}
-
-		e = &ast.TypeSpec_Schema{
-			Schema: &ast.SchemaType{
-				RootOps: &ast.FieldList{
-					List: append(u.Schema.RootOps.List, v.Schema.RootOps.List...),
-				},
-			},
-		}
-	case *ast.TypeSpec_Scalar:
-		_, ok := n.(*ast.TypeSpec_Scalar)
-		if !ok {
-			panic("mismatched types")
-		}
-
-		e = u
-	case *ast.TypeSpec_Object:
-		v, ok := n.(*ast.TypeSpec_Object)
-		if !ok {
-			panic("mismatched types")
-		}
-
-		e = &ast.TypeSpec_Object{
-			Object: &ast.ObjectType{
-				Interfaces: append(u.Object.Interfaces, v.Object.Interfaces...),
-				Fields: &ast.FieldList{
-					List: append(u.Object.Fields.List, v.Object.Fields.List...),
-				},
-			},
-		}
-	case *ast.TypeSpec_Interface:
-		v, ok := n.(*ast.TypeSpec_Interface)
-		if !ok {
-			panic("mismatched types")
-		}
-
-		e = &ast.TypeSpec_Interface{
-			Interface: &ast.InterfaceType{
-				Fields: &ast.FieldList{
-					List: append(u.Interface.Fields.List, v.Interface.Fields.List...),
-				},
-			},
-		}
-	case *ast.TypeSpec_Enum:
-		v, ok := n.(*ast.TypeSpec_Enum)
-		if !ok {
-			panic("mismatched types")
-		}
-
-		e = &ast.TypeSpec_Enum{
-			Enum: &ast.EnumType{
-				Values: &ast.FieldList{
-					List: append(u.Enum.Values.List, v.Enum.Values.List...),
-				},
-			},
-		}
-	case *ast.TypeSpec_Union:
-		v, ok := n.(*ast.TypeSpec_Union)
-		if !ok {
-			panic("mismatched types")
-		}
-
-		e = &ast.TypeSpec_Union{
-			Union: &ast.UnionType{
-				Members: append(u.Union.Members, v.Union.Members...),
-			},
-		}
-	case *ast.TypeSpec_Input:
-		v, ok := n.(*ast.TypeSpec_Input)
-		if !ok {
-			panic("mismatched types")
-		}
-
-		e = &ast.TypeSpec_Input{
-			Input: &ast.InputType{
-				Fields: &ast.InputValueList{
-					List: append(u.Input.Fields.List, v.Input.Fields.List...),
-				},
-			},
-		}
-	}
-	return
-}
-
-func addTypes(n *node, typeMap map[string]*ast.TypeDecl, add func(string, *ast.TypeDecl, map[string]*ast.TypeDecl) bool) (err error) {
-	for _, tg := range n.Types {
-		var ts *ast.TypeSpec
-		switch v := tg.Spec.(type) {
-		case *ast.TypeDecl_TypeSpec:
-			ts = v.TypeSpec
-		case *ast.TypeDecl_TypeExtSpec:
-			ts = v.TypeExtSpec.Type
-		default:
-			panic("unknown spec")
-		}
-
-		name := "schema"
-		if ts.Name != nil {
-			name = ts.Name.Name
-		}
-
-		// Add type decl
-		skip := add(name, tg, typeMap)
-		if skip {
 			continue
 		}
 
-		// Find any imported types contained within decl
-		switch v := ts.Type.(type) {
-		case *ast.TypeSpec_Scalar:
-			// Scalar doesn't need anything done to it
-		case *ast.TypeSpec_Object:
-			for i := range v.Object.Interfaces {
-				impl := v.Object.Interfaces[i]
-				add(impl.Name, nil, typeMap)
-			}
+		dl := d.Len()
+		for i := 0; i < dl; i++ {
+			e := d.Front()
 
-			err = resolveFieldList(n.Name, v.Object.Fields, typeMap, add)
-			if err != nil {
-				return
-			}
-		case *ast.TypeSpec_Interface:
-			err = resolveFieldList(n.Name, v.Interface.Fields, typeMap, add)
-			if err != nil {
-				return
-			}
-		case *ast.TypeSpec_Union:
-			for i := range v.Union.Members {
-				mem := v.Union.Members[i]
-				add(mem.Name, nil, typeMap)
-			}
-		case *ast.TypeSpec_Enum:
-			// TODO: probably should resolve directives here
-		case *ast.TypeSpec_Input:
-			err = resolveArgList(n.Name, v.Input.Fields, typeMap, add)
-			if err != nil {
-				return err
-			}
-		case *ast.TypeSpec_Directive:
-			err = resolveArgList(n.Name, v.Directive.Args, typeMap, add)
-			if err != nil {
-				return err
-			}
+			addDeps(e.Value.(*ast.TypeDecl), typeMap, n.Types)
+
+			d.PushBack(e)
 		}
+
+		if decls != nil {
+			decls.PushBack(d)
+			continue
+		}
+
+		l := list.New()
+		l.PushBack(d)
+		typeMap[name] = l
 	}
 
 	return
 }
 
-func resolveFieldList(name string, fields *ast.FieldList, typeMap map[string]*ast.TypeDecl, add func(string, *ast.TypeDecl, map[string]*ast.TypeDecl) bool) (err error) {
+func addDeps(decl *ast.TypeDecl, typeMap, peers map[string]*list.List) {
+	var ts *ast.TypeSpec
+	switch v := decl.Spec.(type) {
+	case *ast.TypeDecl_TypeSpec:
+		ts = v.TypeSpec
+	case *ast.TypeDecl_TypeExtSpec:
+		ts = v.TypeExtSpec.Type
+	}
+
+	switch v := ts.Type.(type) {
+	case *ast.TypeSpec_Scalar:
+	case *ast.TypeSpec_Enum:
+	case *ast.TypeSpec_Schema:
+		resolveFieldList(v.Schema.RootOps, typeMap, peers)
+	case *ast.TypeSpec_Object:
+		for _, i := range v.Object.Interfaces {
+			if _, exists := typeMap[i.Name]; exists {
+				continue
+			}
+
+			typeMap[i.Name] = peers[i.Name] // either init as peer or nil
+		}
+
+		resolveFieldList(v.Object.Fields, typeMap, peers)
+	case *ast.TypeSpec_Interface:
+		resolveFieldList(v.Interface.Fields, typeMap, peers)
+	case *ast.TypeSpec_Union:
+		for _, i := range v.Union.Members {
+			if _, exists := typeMap[i.Name]; exists {
+				continue
+			}
+
+			typeMap[i.Name] = peers[i.Name] // either init as peer or nil
+		}
+	case *ast.TypeSpec_Input:
+		resolveArgList(v.Input.Fields, typeMap, peers)
+	case *ast.TypeSpec_Directive:
+		resolveArgList(v.Directive.Args, typeMap, peers)
+	}
+}
+
+func resolveFieldList(fields *ast.FieldList, typeMap, peers map[string]*list.List) {
 	if fields == nil {
 		return
 	}
 
 	for _, f := range fields.List {
-		err = resolveArgList(name, f.Args, typeMap, add)
-		if err != nil {
-			return
-		}
+		resolveArgList(f.Args, typeMap, peers)
 
 		var t *ast.Ident
 		switch v := f.Type.(type) {
@@ -547,12 +294,16 @@ func resolveFieldList(name string, fields *ast.FieldList, typeMap map[string]*as
 		default:
 			return
 		}
-		add(t.Name, nil, typeMap)
+
+		if _, exists := typeMap[t.Name]; exists {
+			continue
+		}
+		typeMap[t.Name] = peers[t.Name] // either init as peer or nil
 	}
 	return
 }
 
-func resolveArgList(name string, fields *ast.InputValueList, typeMap map[string]*ast.TypeDecl, add func(string, *ast.TypeDecl, map[string]*ast.TypeDecl) bool) (err error) {
+func resolveArgList(fields *ast.InputValueList, typeMap, peers map[string]*list.List) {
 	if fields == nil {
 		return
 	}
@@ -569,7 +320,12 @@ func resolveArgList(name string, fields *ast.InputValueList, typeMap map[string]
 		default:
 			return
 		}
-		add(t.Name, nil, typeMap)
+
+		if _, exists := typeMap[t.Name]; exists {
+			continue
+		}
+		typeMap[t.Name] = peers[t.Name] // either init as peer or nil
+
 	}
 	return
 }
@@ -583,9 +339,12 @@ func isCircular(a, b *node) bool {
 	return false
 }
 
-func isBuiltinType(name string) bool {
-	tname := strings.ToLower(name)
-	return tname == "id" || tname == "boolean" || tname == "int" || tname == "string" || tname == "float"
+func removeBuiltins(typeMap map[string]*list.List) {
+	delete(typeMap, "ID")
+	delete(typeMap, "Boolean")
+	delete(typeMap, "Int")
+	delete(typeMap, "String")
+	delete(typeMap, "Float")
 }
 
 func unwrapType(i interface{}) *ast.Ident {

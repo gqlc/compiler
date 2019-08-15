@@ -1,5 +1,10 @@
 package compiler
 
+import (
+	"container/list"
+	"github.com/gqlc/graphql/ast"
+)
+
 // CommandLine provides a clean and concise way to implement
 // CLIs for compiling the GraphQL IDL.
 //
@@ -32,4 +37,36 @@ type CommandLine interface {
 
 	// Run the compiler with the given command-line parameters.
 	Run(args []string) error
+}
+
+// ToIR converts a GraphQL Document to a intermediate
+// representation for the compiler internals.
+//
+func ToIR(types []*ast.TypeDecl) map[string]*list.List {
+	ir := make(map[string]*list.List, len(types))
+
+	var ts *ast.TypeSpec
+	for _, decl := range types {
+		switch v := decl.Spec.(type) {
+		case *ast.TypeDecl_TypeSpec:
+			ts = v.TypeSpec
+		case *ast.TypeDecl_TypeExtSpec:
+			ts = v.TypeExtSpec.Type
+		}
+
+		name := "schema"
+		if ts.Name != nil {
+			name = ts.Name.Name
+		}
+
+		l, ok := ir[name]
+		if !ok {
+			l = list.New()
+			ir[name] = l
+		}
+
+		l.PushBack(decl)
+	}
+
+	return ir
 }
