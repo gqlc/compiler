@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gqlc/graphql/ast"
 	"github.com/gqlc/graphql/token"
+	"sort"
 	"strings"
 )
 
@@ -26,15 +27,15 @@ type TypeChecker interface {
 	// Check analyzes the types in a GraphQL Document and returns any
 	// problems it has detected.
 	//
-	Check(doc *ast.Document) []*TypeError
+	Check(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) []error
 }
 
 // TypeCheckFn represents a single function behaving as a TypeChecker.
-type TypeCheckerFn func(*ast.Document) []*TypeError
+type TypeCheckerFn func([]*ast.DirectiveLit, map[string][]*ast.TypeDecl) []error
 
 // Check calls the TypeCheckerFn given the GraphQL Document.
-func (f TypeCheckerFn) Check(doc *ast.Document) []*TypeError {
-	return f(doc)
+func (f TypeCheckerFn) Check(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) []error {
+	return f(directives, types)
 }
 
 // CheckTypes is a helper function for running a suite of
@@ -43,18 +44,48 @@ func (f TypeCheckerFn) Check(doc *ast.Document) []*TypeError {
 //
 // All errors encountered will be appended into the return slice: errs
 //
-func CheckTypes(docs []*ast.Document, checkers ...TypeChecker) (errs []*TypeError) {
-	for _, doc := range docs {
-		doc.Types = append(doc.Types, Types...)
+func CheckTypes(docs map[*ast.Document]map[string][]*ast.TypeDecl, checkers ...TypeChecker) (errs []*TypeError) {
+	builtins := ToIR(Types)
+
+	for d, doc := range docs {
+		types := merge(builtins, doc) // this order ensures user types can override builtin types
+
+		sortTypes(types)
 
 		for _, checker := range checkers {
-			cerrs := checker.Check(doc)
-			if len(cerrs) > 0 {
-				errs = append(errs, cerrs...)
+			cerrs := checker.Check(d.Directives, types)
+			for _, err := range cerrs {
+				errs = append(errs, &TypeError{
+					Doc: d,
+					Msg: err.Error(),
+				})
 			}
 		}
 	}
 	return
+}
+
+func merge(a, b map[string][]*ast.TypeDecl) map[string][]*ast.TypeDecl {
+	c := make(map[string][]*ast.TypeDecl, len(a)+len(b))
+	for name, l := range a {
+		c[name] = l
+	}
+	for name, l := range b {
+		c[name] = l
+	}
+	return c
+}
+
+func sortTypes(types map[string][]*ast.TypeDecl) {
+	for name, l := range types {
+		sort.Slice(l, func(i, j int) bool {
+			_, a := l[i].Spec.(*ast.TypeDecl_TypeSpec)
+			_, b := l[j].Spec.(*ast.TypeDecl_TypeExtSpec)
+			return a && b
+		})
+
+		types[name] = l
+	}
 }
 
 // Types contains the builtin types and any other user-defined types that
@@ -229,109 +260,97 @@ var Types = []*ast.TypeDecl{
 func RegisterTypes(decls ...*ast.TypeDecl) { Types = append(Types, decls...) }
 
 // Validate applies the GraphQL type system validation rules, per the GraphQL spec.
-func Validate(doc *ast.Document) (errs []*TypeError) {
-	defer func() {
-		for _, err := range errs {
-			err.Doc = doc
-		}
-	}()
+func Validate(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) (errs []error) {
+	// Validate each type decl and any extensions it has
+	for name, decls := range types {
+		decl := decls[0]
 
-	// Create pqueue and item map
-	itemMap := make(map[string]*ast.TypeDecl, len(doc.Types))
-
-	// Populate item map
-	for _, decl := range doc.Types {
+		// Make sure the front is a TypeSpec and not an TypeExt
 		ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 		if !ok {
+			errs = append(errs, fmt.Errorf("missing type declaration for: %s", name))
 			continue
 		}
 
-		name := "schema"
-		if _, ok := ts.TypeSpec.Type.(*ast.TypeSpec_Schema); !ok {
-			name = ts.TypeSpec.Name.Name
+		typ, loc := validateType(ts.TypeSpec, types, &errs)
+
+		// Check type name
+		if loc != ast.DirectiveLocation_SCHEMA {
+			checkName(typ, ts.TypeSpec.Name, &errs)
 		}
-		itemMap[name] = decl
-	}
 
-	// Consume pqueue and validate each type decl
-	for _, decl := range doc.Types {
-		switch u := decl.Spec.(type) {
-		case *ast.TypeDecl_TypeSpec:
-			ts := u.TypeSpec
+		// Validate applied directives
+		if loc != ast.DirectiveLocation_NoPos {
+			validateDirectives(ts.TypeSpec.Directives, loc, types, &errs)
+		}
 
-			// Validate type
-			var typ token.Token
-			loc := ast.DirectiveLocation_NoPos
-			switch v := ts.Type.(type) {
-			case *ast.TypeSpec_Schema:
-				validateSchema(v.Schema, itemMap, &errs)
-
-				typ = token.Token_SCHEMA
-				loc = ast.DirectiveLocation_SCHEMA
-			case *ast.TypeSpec_Scalar:
-				typ = token.Token_SCALAR
-				loc = ast.DirectiveLocation_SCALAR
-			case *ast.TypeSpec_Enum:
-				validateEnum(ts.Name.Name, v.Enum, itemMap, &errs)
-
-				typ = token.Token_ENUM
-				loc = ast.DirectiveLocation_ENUM
-			case *ast.TypeSpec_Union:
-				validateUnion(ts.Name.Name, v.Union, itemMap, &errs)
-
-				typ = token.Token_UNION
-				loc = ast.DirectiveLocation_UNION
-			case *ast.TypeSpec_Interface:
-				validateInterface(ts.Name.Name, v.Interface, itemMap, &errs)
-
-				typ = token.Token_INTERFACE
-				loc = ast.DirectiveLocation_INTERFACE
-			case *ast.TypeSpec_Input:
-				validateInput(ts.Name.Name, v.Input, itemMap, &errs)
-
-				typ = token.Token_INPUT
-				loc = ast.DirectiveLocation_INPUT_OBJECT
-			case *ast.TypeSpec_Object:
-				validateObject(ts.Name.Name, v.Object, itemMap, &errs)
-
-				typ = token.Token_TYPE
-				loc = ast.DirectiveLocation_OBJECT
-			case *ast.TypeSpec_Directive:
-				validateDirective(ts.Name.Name, v.Directive, itemMap, &errs)
-
-				typ = token.Token_DIRECTIVE
+		for _, decl = range decls[1:] {
+			exts, ok := decl.Spec.(*ast.TypeDecl_TypeExtSpec)
+			if !ok {
+				errs = append(errs, fmt.Errorf("cannot have more than one type definition for: %s", name))
+				continue
 			}
 
-			// Check type name
-			if loc != ast.DirectiveLocation_SCHEMA {
-				checkName(typ, ts.Name, &errs)
-			}
-
-			// Validate applied directives
-			if loc != ast.DirectiveLocation_NoPos {
-				validateDirectives(ts.Directives, loc, itemMap, &errs)
-			}
-		case *ast.TypeDecl_TypeExtSpec:
-			ts := u.TypeExtSpec.Type
-			validateExtend(ts, itemMap, &errs)
+			validateExtend(ts.TypeSpec, exts.TypeExtSpec.Type, types, &errs)
 		}
 	}
 
 	// Validate top-lvl directives
-	validateDirectives(doc.Directives, ast.DirectiveLocation_DOCUMENT, itemMap, &errs)
+	validateDirectives(directives, ast.DirectiveLocation_DOCUMENT, types, &errs)
+	return
+}
+
+func validateType(ts *ast.TypeSpec, types map[string][]*ast.TypeDecl, errs *[]error) (typ token.Token, loc ast.DirectiveLocation_Loc) {
+	switch v := ts.Type.(type) {
+	case *ast.TypeSpec_Schema:
+		validateSchema(v.Schema, types, errs)
+
+		typ = token.Token_SCHEMA
+		loc = ast.DirectiveLocation_SCHEMA
+	case *ast.TypeSpec_Scalar:
+		typ = token.Token_SCALAR
+		loc = ast.DirectiveLocation_SCALAR
+	case *ast.TypeSpec_Enum:
+		validateEnum(ts.Name.Name, v.Enum, types, errs)
+
+		typ = token.Token_ENUM
+		loc = ast.DirectiveLocation_ENUM
+	case *ast.TypeSpec_Union:
+		validateUnion(ts.Name.Name, v.Union, types, errs)
+
+		typ = token.Token_UNION
+		loc = ast.DirectiveLocation_UNION
+	case *ast.TypeSpec_Interface:
+		validateInterface(ts.Name.Name, v.Interface, types, errs)
+
+		typ = token.Token_INTERFACE
+		loc = ast.DirectiveLocation_INTERFACE
+	case *ast.TypeSpec_Input:
+		validateInput(ts.Name.Name, v.Input, types, errs)
+
+		typ = token.Token_INPUT
+		loc = ast.DirectiveLocation_INPUT_OBJECT
+	case *ast.TypeSpec_Object:
+		validateObject(ts.Name.Name, v.Object, types, errs)
+
+		typ = token.Token_TYPE
+		loc = ast.DirectiveLocation_OBJECT
+	case *ast.TypeSpec_Directive:
+		validateDirective(ts.Name.Name, v.Directive, types, errs)
+
+		typ = token.Token_DIRECTIVE
+	}
 	return
 }
 
 // validateSchema validates a schema declaration
-func validateSchema(schema *ast.SchemaType, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateSchema(schema *ast.SchemaType, items map[string][]*ast.TypeDecl, errs *[]error) {
 	if schema.RootOps == nil {
 		return
 	}
 
 	if len(schema.RootOps.List) == 0 {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("schema: at minimum query object must be provided"),
-		})
+		*errs = append(*errs, fmt.Errorf("schema: at minimum query object must be provided"))
 		return
 	}
 
@@ -346,56 +365,46 @@ func validateSchema(schema *ast.SchemaType, items map[string]*ast.TypeDecl, errs
 		case *ast.Field_Ident:
 			id = v.Ident
 		case *ast.Field_List:
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("schema:%s: root operation return type can not be a list type", f.Name.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("schema:%s: root operation return type can not be a list type", f.Name.Name))
 			continue
 		case *ast.Field_NonNull:
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("schema:%s: root operation return type can not be a non null type", f.Name.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("schema:%s: root operation return type can not be a non null type", f.Name.Name))
 			continue
 		default:
 			panic(fmt.Sprintf("compiler: schema:%s: must have type", f.Name.Name))
 		}
 
-		i, exists := items[id.Name]
+		decls, exists := items[id.Name]
 		if !exists {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("schema:%s: unknown type: %s", f.Name.Name, id.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("schema:%s: unknown type: %s", f.Name.Name, id.Name))
 			continue
 		}
 
-		ts, ok := i.Spec.(*ast.TypeDecl_TypeSpec)
+		decl := decls[0]
+
+		ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 		if !ok {
 			continue
 		}
 
 		if _, ok = ts.TypeSpec.Type.(*ast.TypeSpec_Object); !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("schema:%s: root operation return type must be an object type", f.Name.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("schema:%s: root operation return type must be an object type", f.Name.Name))
 		}
 	}
 
 	if !hasQuery {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("schema: query object must be provided"),
-		})
+		*errs = append(*errs, fmt.Errorf("schema: query object must be provided"))
 	}
 }
 
 // validateEnum validates an enum declaration
-func validateEnum(name string, enum *ast.EnumType, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateEnum(name string, enum *ast.EnumType, items map[string][]*ast.TypeDecl, errs *[]error) {
 	if enum.Values == nil {
 		return
 	}
 
 	if len(enum.Values.List) == 0 {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s: enum type must define one or more unique enum values", name),
-		})
+		*errs = append(*errs, fmt.Errorf("%s: enum type must define one or more unique enum values", name))
 		return
 	}
 
@@ -412,22 +421,18 @@ func validateEnum(name string, enum *ast.EnumType, items map[string]*ast.TypeDec
 			continue
 		}
 
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s:%s: enum value must be unique", name, v),
-		})
+		*errs = append(*errs, fmt.Errorf("%s:%s: enum value must be unique", name, v))
 	}
 }
 
 // validateUnion validates a union declaration
-func validateUnion(name string, union *ast.UnionType, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateUnion(name string, union *ast.UnionType, items map[string][]*ast.TypeDecl, errs *[]error) {
 	if union.Members == nil {
 		return
 	}
 
 	if len(union.Members) == 0 {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s: union type must include one or more unique member types", name),
-		})
+		*errs = append(*errs, fmt.Errorf("%s: union type must include one or more unique member types", name))
 		return
 	}
 
@@ -438,35 +443,31 @@ func validateUnion(name string, union *ast.UnionType, items map[string]*ast.Type
 	}
 
 	for v, c := range vMap {
-		i, exists := items[v]
+		decls, exists := items[v]
 		if !exists {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: undefined type", name, v),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: undefined type", name, v))
 			continue
 		}
 
-		ts, ok := i.Spec.(*ast.TypeDecl_TypeSpec)
+		decl := decls[0]
+
+		ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 		if !ok {
 			continue
 		}
 
 		if _, ok := ts.TypeSpec.Type.(*ast.TypeSpec_Object); !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: member type must be an object type", name, v),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: member type must be an object type", name, v))
 		}
 
 		if c > 1 {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: member type must be unique", name, v),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: member type must be unique", name, v))
 		}
 	}
 }
 
 // validateArgDefs validates a list of argument definitions
-func validateArgDefs(name string, args []*ast.InputValue, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateArgDefs(name string, args []*ast.InputValue, items map[string][]*ast.TypeDecl, errs *[]error) {
 	aMap := make(map[string]struct {
 		field *ast.InputValue
 		count int
@@ -488,16 +489,12 @@ func validateArgDefs(name string, args []*ast.InputValue, items map[string]*ast.
 	for aname, a := range aMap {
 		// Ensure field uniqueness
 		if a.count > 1 {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: argument must be unique", name, aname),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: argument must be unique", name, aname))
 		}
 
 		// Check field name
 		if strings.HasPrefix(aname, "__") {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: argument name cannot start with \"__\" (double underscore)", name, aname),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: argument name cannot start with \"__\" (double underscore)", name, aname))
 		}
 
 		// Validate field type is an InputType
@@ -518,9 +515,7 @@ func validateArgDefs(name string, args []*ast.InputValue, items map[string]*ast.
 		}
 
 		if !isInputType(id, items) {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: argument type must be a valid input type, not: %s", name, aname, id.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: argument type must be a valid input type, not: %s", name, aname, id.Name))
 		}
 
 		// Validate any default value provided
@@ -538,7 +533,7 @@ func validateArgDefs(name string, args []*ast.InputValue, items map[string]*ast.
 }
 
 // validateFields validates a list of field definitions
-func validateFields(name string, fields []*ast.Field, items map[string]*ast.TypeDecl, errs *[]*TypeError) map[string]struct {
+func validateFields(name string, fields []*ast.Field, items map[string][]*ast.TypeDecl, errs *[]error) map[string]struct {
 	field *ast.Field
 	count int
 } {
@@ -563,16 +558,12 @@ func validateFields(name string, fields []*ast.Field, items map[string]*ast.Type
 	for fname, f := range fMap {
 		// Ensure field uniqueness
 		if f.count > 1 {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: field must be unique", name, fname),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: field must be unique", name, fname))
 		}
 
 		// Check field name
 		if strings.HasPrefix(fname, "__") {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: field name cannot start with \"__\" (double underscore)", name, fname),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: field name cannot start with \"__\" (double underscore)", name, fname))
 		}
 
 		// Validate args
@@ -594,9 +585,7 @@ func validateFields(name string, fields []*ast.Field, items map[string]*ast.Type
 		}
 
 		if !isOutputType(id, items) {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: field type must be a valid output type, not: %s", name, fname, id.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: field type must be a valid output type, not: %s", name, fname, id.Name))
 		}
 
 		if len(f.field.Directives) > 0 {
@@ -608,15 +597,13 @@ func validateFields(name string, fields []*ast.Field, items map[string]*ast.Type
 }
 
 // validateInterface validates an interface declaration
-func validateInterface(name string, inter *ast.InterfaceType, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateInterface(name string, inter *ast.InterfaceType, items map[string][]*ast.TypeDecl, errs *[]error) {
 	if inter.Fields == nil {
 		return
 	}
 
 	if len(inter.Fields.List) == 0 {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s: interface type must one or more fields", name),
-		})
+		*errs = append(*errs, fmt.Errorf("%s: interface type must one or more fields", name))
 		return
 	}
 
@@ -624,15 +611,13 @@ func validateInterface(name string, inter *ast.InterfaceType, items map[string]*
 }
 
 // validateInput validates an input object declaration
-func validateInput(name string, input *ast.InputType, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateInput(name string, input *ast.InputType, items map[string][]*ast.TypeDecl, errs *[]error) {
 	if input.Fields == nil {
 		return
 	}
 
 	if len(input.Fields.List) == 0 {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s: input object type must define one or more input fields", name),
-		})
+		*errs = append(*errs, fmt.Errorf("%s: input object type must define one or more input fields", name))
 		return
 	}
 
@@ -640,15 +625,13 @@ func validateInput(name string, input *ast.InputType, items map[string]*ast.Type
 }
 
 // validateObject validates an object declaration
-func validateObject(name string, object *ast.ObjectType, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateObject(name string, object *ast.ObjectType, items map[string][]*ast.TypeDecl, errs *[]error) {
 	if object.Fields == nil {
 		return
 	}
 
 	if len(object.Fields.List) == 0 {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s: an object type must define one or more fields", name),
-		})
+		*errs = append(*errs, fmt.Errorf("%s: an object type must define one or more fields", name))
 		return
 	}
 
@@ -662,24 +645,22 @@ func validateObject(name string, object *ast.ObjectType, items map[string]*ast.T
 
 	// Validate interfaces
 	for _, inter := range object.Interfaces {
-		i, exists := items[inter.Name]
+		decls, exists := items[inter.Name]
 		if !exists {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s: undefined interface: %s", name, inter.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s: undefined interface: %s", name, inter.Name))
 			continue
 		}
 
-		ts, ok := i.Spec.(*ast.TypeDecl_TypeSpec)
+		decl := decls[0]
+
+		ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 		if !ok {
 			continue
 		}
 
 		in, ok := ts.TypeSpec.Type.(*ast.TypeSpec_Interface)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: non-interface type can not be used as interface", name, ts.TypeSpec.Name.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: non-interface type can not be used as interface", name, ts.TypeSpec.Name.Name))
 			continue
 		}
 
@@ -695,14 +676,12 @@ func validateObject(name string, object *ast.ObjectType, items map[string]*ast.T
 func validateInterfaceFields(objName, interName string, objFields map[string]struct {
 	field *ast.Field
 	count int
-}, interFields []*ast.Field, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+}, interFields []*ast.Field, items map[string][]*ast.TypeDecl, errs *[]error) {
 	// The object fields must be a super-set of the interface fields
 	for _, interField := range interFields {
 		objField, exists := objFields[interField.Name.Name]
 		if !exists {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: object type must include field: %s", objName, interName, interField.Name.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: object type must include field: %s", objName, interName, interField.Name.Name))
 			continue
 		}
 		fname := interField.Name.Name
@@ -729,15 +708,11 @@ func validateInterfaceFields(objName, interName string, objFields map[string]str
 		oid, iid := unwrapType(a), unwrapType(b)
 		_, oexists := items[oid.Name]
 		if !oexists {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: undefined return type: %s", objName, fname, oid.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: undefined return type: %s", objName, fname, oid.Name))
 		}
 		_, iexists := items[iid.Name]
 		if !iexists {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: undefined return type: %s", interName, fname, iid.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: undefined return type: %s", interName, fname, iid.Name))
 		}
 		if !oexists || !iexists {
 			continue
@@ -746,9 +721,7 @@ func validateInterfaceFields(objName, interName string, objFields map[string]str
 		// 1. The object field must be of a type which is equal to or a sub-type of the interface field.
 		ok := compareTypes(a, b, items)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: object field type must be a sub-type of interface field type", objName, fname),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: object field type must be a sub-type of interface field type", objName, fname))
 		}
 
 		// 2. The object field must include an argument of the same name for every argument defined in the
@@ -757,9 +730,7 @@ func validateInterfaceFields(objName, interName string, objFields map[string]str
 			continue
 		}
 		if objField.field.Args == nil {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: object field must include the same argument definitions that the interface field has", objName, fname),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: object field must include the same argument definitions that the interface field has", objName, fname))
 			continue
 		}
 
@@ -785,9 +756,7 @@ func validateInterfaceFields(objName, interName string, objFields map[string]str
 		for _, ia := range interField.Args.List {
 			a, exists = aMap[ia.Name.Name]
 			if !exists {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: object field is missing interface field argument: %s", objName, fname, ia.Name.Name),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: object field is missing interface field argument: %s", objName, fname, ia.Name.Name))
 				continue
 			}
 			delete(aMap, ia.Name.Name)
@@ -807,18 +776,14 @@ func validateInterfaceFields(objName, interName string, objFields map[string]str
 				continue
 			}
 
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s:%s: object argument and interface argument must be the same type", objName, fname, ia.Name.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s:%s: object argument and interface argument must be the same type", objName, fname, ia.Name.Name))
 		}
 
 		// 3. The object field may include additional arguments not defined in the interface field, but any
 		// 	  additional argument must not be required, i.e. must not be of a non‐nullable type.
 		for oaName, oaType := range aMap {
 			if _, ok := oaType.(*ast.NonNull); ok {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s:%s: additional arguments to interface field implementation must be non-null", objName, fname, oaName),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s:%s: additional arguments to interface field implementation must be non-null", objName, fname, oaName))
 			}
 		}
 	}
@@ -826,7 +791,7 @@ func validateInterfaceFields(objName, interName string, objFields map[string]str
 
 // compareTypes compares two types, a and b.
 // It returns a <= b.
-func compareTypes(a, b interface{}, items map[string]*ast.TypeDecl) bool {
+func compareTypes(a, b interface{}, items map[string][]*ast.TypeDecl) bool {
 	ai, _ := a.(*ast.Ident)
 	bi, _ := b.(*ast.Ident)
 	if ai != nil && bi != nil {
@@ -834,9 +799,12 @@ func compareTypes(a, b interface{}, items map[string]*ast.TypeDecl) bool {
 			return true
 		}
 
+		ad := items[ai.Name][0]
+		bd := items[bi.Name][0]
+
 		// Check if a is a sub-type of b through interface implementation
-		at := items[ai.Name].Spec.(*ast.TypeDecl_TypeSpec)
-		bt := items[bi.Name].Spec.(*ast.TypeDecl_TypeSpec)
+		at := ad.Spec.(*ast.TypeDecl_TypeSpec)
+		bt := bd.Spec.(*ast.TypeDecl_TypeSpec)
 
 		aObj, ok := at.TypeSpec.Type.(*ast.TypeSpec_Object)
 		if !ok {
@@ -911,28 +879,18 @@ func compareTypes(a, b interface{}, items map[string]*ast.TypeDecl) bool {
 }
 
 // validateExtend validates a type extension
-func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, errs *[]error) {
 	name := "schema"
-	if ts.Name != nil {
-		name = ts.Name.Name
+	if exts.Name != nil {
+		name = exts.Name.Name
 	}
-	ogtd, exists := items[name]
-	if !exists {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("extend:%s: no definition found for this type", name),
-		})
-		return
-	}
-	ogts := ogtd.Spec.(*ast.TypeDecl_TypeSpec).TypeSpec
 
 	var loc ast.DirectiveLocation_Loc
-	switch t := ts.Type.(type) {
+	switch t := exts.Type.(type) {
 	case *ast.TypeSpec_Schema:
 		_, ok := ogts.Type.(*ast.TypeSpec_Schema)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("extend:schema: original type defintion must be a schema"),
-			})
+			*errs = append(*errs, fmt.Errorf("extend:schema: original type defintion must be a schema"))
 			return
 		}
 
@@ -940,9 +898,7 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 	case *ast.TypeSpec_Scalar:
 		_, ok := ogts.Type.(*ast.TypeSpec_Scalar)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("extend:scalar:%s: original type defintion must be a scalar", name),
-			})
+			*errs = append(*errs, fmt.Errorf("extend:scalar:%s: original type defintion must be a scalar", name))
 			return
 		}
 
@@ -950,9 +906,7 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 	case *ast.TypeSpec_Object:
 		ogObj, ok := ogts.Type.(*ast.TypeSpec_Object)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("extend:object:%s: original type defintion must be a object", name),
-			})
+			*errs = append(*errs, fmt.Errorf("extend:object:%s: original type defintion must be a object", name))
 			return
 		}
 
@@ -982,9 +936,7 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 
 			for efName, ef := range efMap {
 				if _, ok := fMap[efName]; ok {
-					*errs = append(*errs, &TypeError{
-						Msg: fmt.Sprintf("%s:%s: field defintion already exists in original object definition", name, efName),
-					})
+					*errs = append(*errs, fmt.Errorf("%s:%s: field defintion already exists in original object definition", name, efName))
 					continue
 				}
 
@@ -1002,24 +954,22 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 
 		// Validate interfaces
 		for _, inter := range t.Object.Interfaces {
-			i, exists := items[inter.Name]
+			decls, exists := items[inter.Name]
 			if !exists {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s: undefined interface: %s", name, inter.Name),
-				})
+				*errs = append(*errs, fmt.Errorf("%s: undefined interface: %s", name, inter.Name))
 				continue
 			}
 
-			ts, ok := i.Spec.(*ast.TypeDecl_TypeSpec)
+			decl := decls[0]
+
+			ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 			if !ok {
 				continue
 			}
 
 			in, ok := ts.TypeSpec.Type.(*ast.TypeSpec_Interface)
 			if !ok {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: non-interface type can not be used as interface", name, ts.TypeSpec.Name.Name),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: non-interface type can not be used as interface", name, ts.TypeSpec.Name.Name))
 				continue
 			}
 
@@ -1032,9 +982,7 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 	case *ast.TypeSpec_Interface:
 		ogInter, ok := ogts.Type.(*ast.TypeSpec_Interface)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("extend:interface:%s: original type defintion must be a interface", name),
-			})
+			*errs = append(*errs, fmt.Errorf("extend:interface:%s: original type defintion must be a interface", name))
 			return
 		}
 
@@ -1049,9 +997,7 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 		for _, of := range ogInter.Interface.Fields.List {
 			for _, ef := range t.Interface.Fields.List {
 				if of.Name.Name == ef.Name.Name {
-					*errs = append(*errs, &TypeError{
-						Msg: fmt.Sprintf("%s:%s: field already exists in original interface definition", name, of.Name.Name),
-					})
+					*errs = append(*errs, fmt.Errorf("%s:%s: field already exists in original interface definition", name, of.Name.Name))
 				}
 			}
 		}
@@ -1061,9 +1007,7 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 	case *ast.TypeSpec_Union:
 		ogUnion, ok := ogts.Type.(*ast.TypeSpec_Union)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("extend:union:%s: original type defintion must be a union", name),
-			})
+			*errs = append(*errs, fmt.Errorf("extend:union:%s: original type defintion must be a union", name))
 			return
 		}
 
@@ -1078,18 +1022,14 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 		for _, om := range ogUnion.Union.Members {
 			for _, em := range t.Union.Members {
 				if om.Name == em.Name {
-					*errs = append(*errs, &TypeError{
-						Msg: fmt.Sprintf("%s:%s: union member already exists in original union definition", name, om.Name),
-					})
+					*errs = append(*errs, fmt.Errorf("%s:%s: union member already exists in original union definition", name, om.Name))
 				}
 			}
 		}
 	case *ast.TypeSpec_Enum:
 		ogEnum, ok := ogts.Type.(*ast.TypeSpec_Enum)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("extend:enum:%s: original type defintion must be a enum", name),
-			})
+			*errs = append(*errs, fmt.Errorf("extend:enum:%s: original type defintion must be a enum", name))
 			return
 		}
 
@@ -1104,18 +1044,14 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 		for _, oev := range ogEnum.Enum.Values.List {
 			for _, eev := range t.Enum.Values.List {
 				if oev.Name.Name == eev.Name.Name {
-					*errs = append(*errs, &TypeError{
-						Msg: fmt.Sprintf("%s:%s: enum value already exists in original enum definition", name, oev.Name.Name),
-					})
+					*errs = append(*errs, fmt.Errorf("%s:%s: enum value already exists in original enum definition", name, oev.Name.Name))
 				}
 			}
 		}
 	case *ast.TypeSpec_Input:
 		ogInput, ok := ogts.Type.(*ast.TypeSpec_Input)
 		if !ok {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("extend:input:%s: original type defintion must be a input", name),
-			})
+			*errs = append(*errs, fmt.Errorf("extend:input:%s: original type defintion must be a input", name))
 			return
 		}
 
@@ -1132,34 +1068,28 @@ func validateExtend(ts *ast.TypeSpec, items map[string]*ast.TypeDecl, errs *[]*T
 		for _, of := range ogInput.Input.Fields.List {
 			for _, ef := range t.Input.Fields.List {
 				if of.Name.Name == ef.Name.Name {
-					*errs = append(*errs, &TypeError{
-						Msg: fmt.Sprintf("%s:%s: field defintion already exists in original input definition", name, of.Name.Name),
-					})
+					*errs = append(*errs, fmt.Errorf("%s:%s: field defintion already exists in original input definition", name, of.Name.Name))
 				}
 			}
 		}
 	default:
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("extend:%s: type extensions are not supported for this type", ts.Name.Name),
-		})
+		*errs = append(*errs, fmt.Errorf("extend:%s: type extensions are not supported for this type", exts.Name.Name))
 		return
 	}
 
 	// Any directives applied to extension must not already be applied to the original type
-	validateDirectives(ts.Directives, loc, items, errs)
+	validateDirectives(exts.Directives, loc, items, errs)
 	for _, od := range ogts.Directives {
-		for _, ed := range ts.Directives {
+		for _, ed := range exts.Directives {
 			if od.Name == ed.Name {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: directive is already applied to original type definition", name, od.Name),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: directive is already applied to original type definition", name, od.Name))
 			}
 		}
 	}
 }
 
 // validateDirective validates a directive declaration
-func validateDirective(name string, directive *ast.DirectiveType, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateDirective(name string, directive *ast.DirectiveType, items map[string][]*ast.TypeDecl, errs *[]error) {
 	if directive.Args == nil {
 		return
 	}
@@ -1167,9 +1097,7 @@ func validateDirective(name string, directive *ast.DirectiveType, items map[stri
 	for _, f := range directive.Args.List {
 		// 1. Check name of arg
 		if strings.HasPrefix(f.Name.Name, "__") {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: argument name cannot start with \"__\" (double underscore)", name, f.Name.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: argument name cannot start with \"__\" (double underscore)", name, f.Name.Name))
 		}
 
 		// 2. Verify that the arg type is an input type
@@ -1190,9 +1118,7 @@ func validateDirective(name string, directive *ast.DirectiveType, items map[stri
 		}
 
 		if !isInputType(id, items) {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: directive argument must be a valid input type, not: %s", name, f.Name.Name, id.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: directive argument must be a valid input type, not: %s", name, f.Name.Name, id.Name))
 		}
 
 		// 3. Validate any default value provided
@@ -1206,9 +1132,7 @@ func validateDirective(name string, directive *ast.DirectiveType, items map[stri
 		// 4. Check that the arg directives don't reference this one
 		for _, d := range f.Directives {
 			if d.Name == name {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: directive argument cannont reference its own directive definition", name, f.Name.Name),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: directive argument cannont reference its own directive definition", name, f.Name.Name))
 			}
 		}
 
@@ -1221,7 +1145,7 @@ func validateDirective(name string, directive *ast.DirectiveType, items map[stri
 }
 
 // validateArgs validates a list of args. host can either be
-func validateArgs(host string, argDefs []*ast.InputValue, args []*ast.Arg, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateArgs(host string, argDefs []*ast.InputValue, args []*ast.Arg, items map[string][]*ast.TypeDecl, errs *[]error) {
 	argMap := make(map[string]struct {
 		arg   *ast.Arg
 		count int
@@ -1248,9 +1172,7 @@ func validateArgs(host string, argDefs []*ast.InputValue, args []*ast.Arg, items
 		}
 
 		if a.count > 1 {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s: arg must be unique in: %s", argDef.Name.Name, host),
-			})
+			*errs = append(*errs, fmt.Errorf("%s: arg must be unique in: %s", argDef.Name.Name, host))
 			continue
 		}
 		delete(argMap, argDef.Name.Name)
@@ -1274,9 +1196,7 @@ func validateArgs(host string, argDefs []*ast.InputValue, args []*ast.Arg, items
 		case isNonNull && argDef.Default != nil: // not required cuz it has a default value
 			continue
 		case isNonNull && argDef.Default == nil: // required cuz it doesn't hav a default value
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s: non-null arg must be present in: %s", argDef.Name.Name, host),
-			})
+			*errs = append(*errs, fmt.Errorf("%s: non-null arg must be present in: %s", argDef.Name.Name, host))
 			continue
 		}
 
@@ -1292,14 +1212,12 @@ func validateArgs(host string, argDefs []*ast.InputValue, args []*ast.Arg, items
 
 	// Args must exist
 	for arg := range argMap {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s: undefined arg: %s", host, arg),
-		})
+		*errs = append(*errs, fmt.Errorf("%s: undefined arg: %s", host, arg))
 	}
 }
 
 // validateValue validates a value
-func validateValue(host, cName string, c interface{}, val, valType interface{}, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateValue(host, cName string, c interface{}, val, valType interface{}, items map[string][]*ast.TypeDecl, errs *[]error) {
 	switch u := valType.(type) {
 	case *ast.Ident:
 		// Check if its a composite
@@ -1323,33 +1241,27 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 		if cLit != nil {
 			objLit, ok := cLit.Value.(*ast.CompositeLit_ObjLit)
 			if !ok {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: input object must be provided", host, cName),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: input object must be provided", host, cName))
 				return
 			}
 
-			objDef, exists := items[u.Name]
+			decls, exists := items[u.Name]
 			if !exists {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: undefined input object: %s", host, cName, u.Name),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: undefined input object: %s", host, cName, u.Name))
 				return
 			}
 
-			objSpec, ok := objDef.Spec.(*ast.TypeDecl_TypeSpec)
+			decl := decls[0]
+
+			objSpec, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 			if !ok {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: could not find type spec for input object: %s", host, cName, u.Name),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: could not find type spec for input object: %s", host, cName, u.Name))
 				return
 			}
 
 			inputType, ok := objSpec.TypeSpec.Type.(*ast.TypeSpec_Input)
 			if !ok {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: %s is not an input object", host, cName, u.Name),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: %s is not an input object", host, cName, u.Name))
 				return
 			}
 
@@ -1395,12 +1307,14 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 
 			return
 		default:
-			ed, exists := items[u.Name]
+			decls, exists := items[u.Name]
 			if !exists {
 				break
 			}
 
-			ts, ok := ed.Spec.(*ast.TypeDecl_TypeSpec)
+			decl := decls[0]
+
+			ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 			if !ok {
 				break
 			}
@@ -1424,15 +1338,11 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 				return
 			}
 
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: enum: %s has no value named: %s", host, cName, u.Name, bLit.Value),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: enum: %s has no value named: %s", host, cName, u.Name, bLit.Value))
 			return
 		}
 
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s:%s: %s is not coercible to: %s", host, cName, token.Token(bLit.Kind), u.Name),
-		})
+		*errs = append(*errs, fmt.Errorf("%s:%s: %s is not coercible to: %s", host, cName, token.Token(bLit.Kind), u.Name))
 	case *ast.List:
 		switch v := u.Type.(type) {
 		case *ast.List_Ident:
@@ -1561,9 +1471,7 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 			}
 
 			if bLit.Kind == token.Token_NULL {
-				*errs = append(*errs, &TypeError{
-					Msg: fmt.Sprintf("%s:%s: non-null arg cannot be the null value", host, cName),
-				})
+				*errs = append(*errs, fmt.Errorf("%s:%s: non-null arg cannot be the null value", host, cName))
 				return
 			}
 		case *ast.NonNull_List:
@@ -1575,7 +1483,7 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 }
 
 // validateObj validates an input value
-func validateObj(host, arg string, fieldDefs []*ast.InputValue, objFields []*ast.ObjLit_Pair, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateObj(host, arg string, fieldDefs []*ast.InputValue, objFields []*ast.ObjLit_Pair, items map[string][]*ast.TypeDecl, errs *[]error) {
 	objFieldMap := make(map[string]struct {
 		objField *ast.ObjLit_Pair
 		count    int
@@ -1602,9 +1510,7 @@ func validateObj(host, arg string, fieldDefs []*ast.InputValue, objFields []*ast
 
 		// Fields must be unique
 		if f.count > 1 {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s:%s: field must be unique: %s", host, arg, fieldDef.Name.Name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s:%s: field must be unique: %s", host, arg, fieldDef.Name.Name))
 			continue
 		}
 
@@ -1627,9 +1533,7 @@ func validateObj(host, arg string, fieldDefs []*ast.InputValue, objFields []*ast
 		case isNonNull && fieldDef.Default != nil: // not required cuz it has a default value
 			continue
 		case isNonNull && fieldDef.Default == nil: // required cuz it doesn't hav a default value
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s: non-null field must be present in: %s", fieldDef.Name.Name, host),
-			})
+			*errs = append(*errs, fmt.Errorf("%s: non-null field must be present in: %s", fieldDef.Name.Name, host))
 			continue
 		}
 
@@ -1647,14 +1551,12 @@ func validateObj(host, arg string, fieldDefs []*ast.InputValue, objFields []*ast
 
 	// Fields must exist
 	for _, f := range objFieldMap {
-		*errs = append(*errs, &TypeError{
-			Msg: fmt.Sprintf("%s:%s: undefined field: %s", host, arg, f.objField.Key.Name),
-		})
+		*errs = append(*errs, fmt.Errorf("%s:%s: undefined field: %s", host, arg, f.objField.Key.Name))
 	}
 }
 
 // validateDirectives validates a list of applied directives
-func validateDirectives(directives []*ast.DirectiveLit, loc ast.DirectiveLocation_Loc, items map[string]*ast.TypeDecl, errs *[]*TypeError) {
+func validateDirectives(directives []*ast.DirectiveLit, loc ast.DirectiveLocation_Loc, items map[string][]*ast.TypeDecl, errs *[]error) {
 	dirMap := make(map[string]struct {
 		dirLit *ast.DirectiveLit
 		count  int
@@ -1675,15 +1577,15 @@ func validateDirectives(directives []*ast.DirectiveLit, loc ast.DirectiveLocatio
 
 	for name, d := range dirMap {
 		// 1: Directive definition must exist
-		dirDef, exists := items[name]
+		decls, exists := items[name]
 		if !exists {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s: undefined directive", name),
-			})
+			*errs = append(*errs, fmt.Errorf("%s: undefined directive", name))
 			continue
 		}
 
-		dirSpec, ok := dirDef.Spec.(*ast.TypeDecl_TypeSpec)
+		decl := decls[0]
+
+		dirSpec, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 		if !ok {
 			continue
 		}
@@ -1698,17 +1600,13 @@ func validateDirectives(directives []*ast.DirectiveLit, loc ast.DirectiveLocatio
 			}
 		}
 		if !validLoc {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s: invalid location for directive: %s", name, loc),
-			})
+			*errs = append(*errs, fmt.Errorf("%s: invalid location for directive: %s", name, loc))
 			continue
 		}
 
 		// 3: Directives must be unique per location
 		if d.count > 1 {
-			*errs = append(*errs, &TypeError{
-				Msg: fmt.Sprintf("%s: directive cannot be applied more than once per location: %s", name, loc),
-			})
+			*errs = append(*errs, fmt.Errorf("%s: directive cannot be applied more than once per location: %s", name, loc))
 		}
 
 		// 4: Directive arguments must be valid
@@ -1720,23 +1618,23 @@ func validateDirectives(directives []*ast.DirectiveLit, loc ast.DirectiveLocatio
 }
 
 // checkName enforces that no Ident starts with "__" (two underscores).
-func checkName(typ token.Token, name *ast.Ident, errs *[]*TypeError) {
+func checkName(typ token.Token, name *ast.Ident, errs *[]error) {
 	if !strings.HasPrefix(name.Name, "__") {
 		return
 	}
 
-	*errs = append(*errs, &TypeError{
-		Msg: fmt.Sprintf("%s is an invalid name for type: %s", name.Name, typ),
-	})
+	*errs = append(*errs, fmt.Errorf("%s is an invalid name for type: %s", name.Name, typ))
 }
 
-func isInputType(id *ast.Ident, items map[string]*ast.TypeDecl) bool {
-	i, exists := items[id.Name]
+func isInputType(id *ast.Ident, items map[string][]*ast.TypeDecl) bool {
+	decls, exists := items[id.Name]
 	if !exists {
 		return false
 	}
 
-	ts, ok := i.Spec.(*ast.TypeDecl_TypeSpec)
+	decl := decls[0]
+
+	ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 	if !ok {
 		return false
 	}
@@ -1752,13 +1650,15 @@ func isInputType(id *ast.Ident, items map[string]*ast.TypeDecl) bool {
 	return true
 }
 
-func isOutputType(id *ast.Ident, items map[string]*ast.TypeDecl) bool {
-	i, exists := items[id.Name]
+func isOutputType(id *ast.Ident, items map[string][]*ast.TypeDecl) bool {
+	decls, exists := items[id.Name]
 	if !exists {
 		return false
 	}
 
-	ts, ok := i.Spec.(*ast.TypeDecl_TypeSpec)
+	decl := decls[0]
+
+	ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 	if !ok {
 		return false
 	}

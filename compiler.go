@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"container/list"
 	"github.com/gqlc/graphql/ast"
 )
 
@@ -42,8 +41,8 @@ type CommandLine interface {
 // ToIR converts a GraphQL Document to a intermediate
 // representation for the compiler internals.
 //
-func ToIR(types []*ast.TypeDecl) map[string]*list.List {
-	ir := make(map[string]*list.List, len(types))
+func ToIR(types []*ast.TypeDecl) map[string][]*ast.TypeDecl {
+	ir := make(map[string][]*ast.TypeDecl, len(types))
 
 	var ts *ast.TypeSpec
 	for _, decl := range types {
@@ -59,13 +58,9 @@ func ToIR(types []*ast.TypeDecl) map[string]*list.List {
 			name = ts.Name.Name
 		}
 
-		l, ok := ir[name]
-		if !ok {
-			l = list.New()
-			ir[name] = l
-		}
-
-		l.PushBack(decl)
+		l := ir[name]
+		l = append(l, decl)
+		ir[name] = l
 	}
 
 	return ir

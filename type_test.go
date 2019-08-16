@@ -10,13 +10,12 @@ import (
 )
 
 func TestValue(t *testing.T) {
-
 	testCases := []struct {
 		Name         string
 		CName        string
 		C            interface{}
 		Val, ValType interface{}
-		Items        map[string]*ast.TypeDecl
+		Items        []*ast.TypeDecl
 		Errs         []string
 	}{
 		{
@@ -65,8 +64,8 @@ func TestValue(t *testing.T) {
 			CName:   "enumValue",
 			Val:     &ast.BasicLit{Kind: token.Token_IDENT, Value: "ONE"},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*ast.TypeDecl{
-				"Test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
@@ -85,8 +84,8 @@ func TestValue(t *testing.T) {
 			CName:   "unknownEnumValue",
 			Val:     &ast.BasicLit{Kind: token.Token_IDENT, Value: "TWO"},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*ast.TypeDecl{
-				"Test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Enum{Enum: &ast.EnumType{
@@ -123,8 +122,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*ast.TypeDecl{
-				"Test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -154,7 +153,7 @@ func TestValue(t *testing.T) {
 			CName:   "undefinedObject",
 			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items:   map[string]*ast.TypeDecl{},
+			Items:   []*ast.TypeDecl{},
 			Errs: []string{
 				fmt.Sprintf("%s:%s: undefined input object: %s", "Composite:UndefinedObject", "undefinedObject", "Test"),
 			},
@@ -164,7 +163,7 @@ func TestValue(t *testing.T) {
 			CName:   "onlyExtensionProvided",
 			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items:   map[string]*ast.TypeDecl{"Test": {Spec: &ast.TypeDecl_TypeExtSpec{}}},
+			Items:   []*ast.TypeDecl{{Spec: &ast.TypeDecl_TypeExtSpec{TypeExtSpec: &ast.TypeExtensionSpec{Type: &ast.TypeSpec{}}}}},
 			Errs: []string{
 				fmt.Sprintf("%s:%s: could not find type spec for input object: %s", "Composite:OnlyExtensionProvided", "onlyExtensionProvided", "Test"),
 			},
@@ -174,8 +173,8 @@ func TestValue(t *testing.T) {
 			CName:   "expectedValueNotAnInputObject",
 			Val:     &ast.CompositeLit{Value: &ast.CompositeLit_ObjLit{}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*ast.TypeDecl{
-				"Test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Scalar{},
@@ -198,8 +197,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*ast.TypeDecl{
-				"Test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -230,8 +229,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*ast.TypeDecl{
-				"Test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -261,8 +260,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.Ident{Name: "Test"},
-			Items: map[string]*ast.TypeDecl{
-				"Test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -368,8 +367,8 @@ func TestValue(t *testing.T) {
 				},
 			}}},
 			ValType: &ast.List{Type: &ast.List_Ident{Ident: &ast.Ident{Name: "Test"}}},
-			Items: map[string]*ast.TypeDecl{
-				"Test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "Test"},
 						Type: &ast.TypeSpec_Input{Input: &ast.InputType{
@@ -398,13 +397,13 @@ func TestValue(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
-			var errs []*TypeError
-			validateValue(testCase.Name, testCase.CName, testCase.C, testCase.Val, testCase.ValType, testCase.Items, &errs)
+			var errs []error
+			validateValue(testCase.Name, testCase.CName, testCase.C, testCase.Val, testCase.ValType, ToIR(testCase.Items), &errs)
 
 			var count int
 			for _, terr := range errs {
 				for _, serr := range testCase.Errs {
-					if terr.Msg == serr {
+					if terr.Error() == serr {
 						count++
 					}
 				}
@@ -419,12 +418,11 @@ func TestValue(t *testing.T) {
 }
 
 func TestDirectives(t *testing.T) {
-
 	testCases := []struct {
 		Name  string
 		Dirs  []*ast.DirectiveLit
 		Loc   ast.DirectiveLocation_Loc
-		Items map[string]*ast.TypeDecl
+		Items []*ast.TypeDecl
 		Errs  []string
 	}{
 		{
@@ -438,8 +436,8 @@ func TestDirectives(t *testing.T) {
 			Name: "InvalidLocation",
 			Dirs: []*ast.DirectiveLit{{Name: "test"}},
 			Loc:  ast.DirectiveLocation_FIELD,
-			Items: map[string]*ast.TypeDecl{
-				"test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "test"},
 						Type: &ast.TypeSpec_Directive{Directive: &ast.DirectiveType{
@@ -456,8 +454,8 @@ func TestDirectives(t *testing.T) {
 			Name: "MustBeUnique",
 			Dirs: []*ast.DirectiveLit{{Name: "test"}, {Name: "test"}},
 			Loc:  ast.DirectiveLocation_FIELD,
-			Items: map[string]*ast.TypeDecl{
-				"test": {
+			Items: []*ast.TypeDecl{
+				{
 					Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
 						Name: &ast.Ident{Name: "test"},
 						Type: &ast.TypeSpec_Directive{Directive: &ast.DirectiveType{
@@ -474,13 +472,13 @@ func TestDirectives(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
-			var errs []*TypeError
-			validateDirectives(testCase.Dirs, testCase.Loc, testCase.Items, &errs)
+			var errs []error
+			validateDirectives(testCase.Dirs, testCase.Loc, ToIR(testCase.Items), &errs)
 
 			var count int
 			for _, terr := range errs {
 				for _, serr := range testCase.Errs {
-					if terr.Msg == serr {
+					if terr.Error() == serr {
 						count++
 					}
 				}
@@ -495,28 +493,28 @@ func TestDirectives(t *testing.T) {
 }
 
 func TestCompareTypes(t *testing.T) {
-	items := map[string]*ast.TypeDecl{
-		"TestInterface": {
+	items := ToIR([]*ast.TypeDecl{
+		{
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestInterface"}, Type: &ast.TypeSpec_Interface{}}},
 		},
-		"TestUnion": {
+		{
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestUnion"}, Type: &ast.TypeSpec_Union{
 				Union: &ast.UnionType{
 					Members: []*ast.Ident{{Name: "TestObjA"}, {Name: "TestObjB"}},
 				},
 			}}},
 		},
-		"TestObjA": {
+		{
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestObjA"}, Type: &ast.TypeSpec_Object{
 				Object: &ast.ObjectType{
 					Interfaces: []*ast.Ident{{Name: "TestInterface"}},
 				},
 			}}},
 		},
-		"TestObjB": {
+		{
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestObjB"}, Type: &ast.TypeSpec_Object{}}},
 		},
-	}
+	})
 
 	testCases := []struct {
 		Name     string
@@ -669,20 +667,17 @@ scalar String`,
 			Name: "Schema",
 			Src: `schema {}
 
-schema {
+extend schema {
 	mutation: Mutation
 }
 
-schema {
+extend schema {
 	query: String
 }
 
 scalar String`,
 			Errs: []string{
 				fmt.Sprintf("schema: at minimum query object must be provided"),
-				fmt.Sprintf("schema: query object must be provided"),
-				fmt.Sprintf("schema:%s: unknown type: %s", "mutation", "Mutation"),
-				fmt.Sprintf("schema:%s: root operation return type must be an object type", "query"),
 			},
 		},
 		{
@@ -753,7 +748,7 @@ interface Test {
 			Name: "Extend:NoDefinitionFound",
 			Src:  `extend scalar String`,
 			Errs: []string{
-				fmt.Sprintf("extend:%s: no definition found for this type", "String"),
+				fmt.Sprintf("missing type declaration for: %s", "String"),
 			},
 		},
 		{
@@ -891,12 +886,12 @@ extend scalar String @a @b`,
 				return
 			}
 
-			errs := Validate(doc)
+			errs := Validate(doc.Directives, ToIR(doc.Types))
 
 			var count int
 			for _, terr := range errs {
 				for _, serr := range testCase.Errs {
-					if terr.Msg == serr {
+					if terr.Error() == serr {
 						count++
 					}
 				}
@@ -905,7 +900,7 @@ extend scalar String @a @b`,
 			if count != len(testCase.Errs) || count != len(errs) || len(errs) != len(testCase.Errs) {
 				fmt.Println("----------------------")
 				for _, terr := range errs {
-					fmt.Println("terr:", terr.Msg)
+					fmt.Println("terr:", terr.Error())
 				}
 				fmt.Println("----------------------")
 				for _, serr := range testCase.Errs {

@@ -23,7 +23,7 @@ func (e *ImportError) Error() string {
 type node struct {
 	Imported bool
 	Childs   []*node
-	Types    map[string]*list.List
+	Types    map[string][]*ast.TypeDecl
 	*ast.Document
 }
 
@@ -33,7 +33,7 @@ type node struct {
 // To import a Document the @import directive is used:
 // directive @import(paths: [String]) on DOCUMENT
 //
-func ReduceImports(docs []*ast.Document) (map[*ast.Document]map[string]*list.List, error) {
+func ReduceImports(docs []*ast.Document) (map[*ast.Document]map[string][]*ast.TypeDecl, error) {
 	// Map docs to nodes
 	dMap := make(map[string]*node, len(docs))
 	nodes := make([]*node, len(docs))
@@ -58,7 +58,7 @@ func ReduceImports(docs []*ast.Document) (map[*ast.Document]map[string]*list.Lis
 	}
 
 	// Unwrap nodes to *ast.Documents
-	rDocs := make(map[*ast.Document]map[string]*list.List, len(forest))
+	rDocs := make(map[*ast.Document]map[string][]*ast.TypeDecl, len(forest))
 	for _, trie := range forest {
 		rDocs[trie.Document] = trie.Types
 	}
@@ -134,7 +134,7 @@ func createImportTries(nodes []*node, dMap map[string]*node) ([]*node, error) {
 }
 
 func resolveImports(root *node) error {
-	typeMap := make(map[string]*list.List)
+	typeMap := make(map[string][]*ast.TypeDecl)
 	directives := make(map[string]*ast.DirectiveLit)
 	defer func() {
 		removeBuiltins(typeMap)
@@ -158,16 +158,10 @@ func resolveImports(root *node) error {
 	for name, decls := range root.Types {
 		typeMap[name] = decls
 
-		l := decls.Len()
-		for i := 0; i < l; i++ {
-			e := decls.Front()
-
-			addDeps(e.Value.(*ast.TypeDecl), typeMap, root.Types)
-
-			decls.PushBack(e)
+		for _, decl := range decls {
+			addDeps(decl, typeMap, root.Types)
 		}
 	}
-	addTypes(root, typeMap)
 
 	// Create queue and populate with children of root node
 	q := list.New()
@@ -176,7 +170,7 @@ func resolveImports(root *node) error {
 	}
 
 	// Walk import graph
-	return walk(q, typeMap, func(n *node, decls map[string]*list.List) {
+	return walk(q, typeMap, func(n *node, decls map[string][]*ast.TypeDecl) {
 		// Collect directives
 		for _, d := range n.Directives {
 			if _, exists := directives[d.Name]; !exists {
@@ -190,7 +184,7 @@ func resolveImports(root *node) error {
 }
 
 // walk preforms a breadth-first walk of the import graph
-func walk(q *list.List, typeMap map[string]*list.List, f func(*node, map[string]*list.List)) (err error) {
+func walk(q *list.List, typeMap map[string][]*ast.TypeDecl, f func(*node, map[string][]*ast.TypeDecl)) (err error) {
 	for q.Len() > 0 {
 		v := q.Front()
 		q.Remove(v)
@@ -205,36 +199,24 @@ func walk(q *list.List, typeMap map[string]*list.List, f func(*node, map[string]
 	return
 }
 
-func addTypes(n *node, typeMap map[string]*list.List) {
+func addTypes(n *node, typeMap map[string][]*ast.TypeDecl) {
 	for name, decls := range typeMap {
 		d, ok := n.Types[name]
 		if !ok {
 			continue
 		}
 
-		dl := d.Len()
-		for i := 0; i < dl; i++ {
-			e := d.Front()
-
-			addDeps(e.Value.(*ast.TypeDecl), typeMap, n.Types)
-
-			d.PushBack(e)
+		for _, decl := range d {
+			addDeps(decl, typeMap, n.Types)
 		}
 
-		if decls != nil {
-			decls.PushBack(d)
-			continue
-		}
-
-		l := list.New()
-		l.PushBack(d)
-		typeMap[name] = l
+		typeMap[name] = append(decls, d...)
 	}
 
 	return
 }
 
-func addDeps(decl *ast.TypeDecl, typeMap, peers map[string]*list.List) {
+func addDeps(decl *ast.TypeDecl, typeMap, peers map[string][]*ast.TypeDecl) {
 	var ts *ast.TypeSpec
 	switch v := decl.Spec.(type) {
 	case *ast.TypeDecl_TypeSpec:
@@ -275,7 +257,7 @@ func addDeps(decl *ast.TypeDecl, typeMap, peers map[string]*list.List) {
 	}
 }
 
-func resolveFieldList(fields *ast.FieldList, typeMap, peers map[string]*list.List) {
+func resolveFieldList(fields *ast.FieldList, typeMap, peers map[string][]*ast.TypeDecl) {
 	if fields == nil {
 		return
 	}
@@ -294,6 +276,9 @@ func resolveFieldList(fields *ast.FieldList, typeMap, peers map[string]*list.Lis
 		default:
 			return
 		}
+		if isBuiltin(t.Name) {
+			continue
+		}
 
 		if _, exists := typeMap[t.Name]; exists {
 			continue
@@ -303,7 +288,7 @@ func resolveFieldList(fields *ast.FieldList, typeMap, peers map[string]*list.Lis
 	return
 }
 
-func resolveArgList(fields *ast.InputValueList, typeMap, peers map[string]*list.List) {
+func resolveArgList(fields *ast.InputValueList, typeMap, peers map[string][]*ast.TypeDecl) {
 	if fields == nil {
 		return
 	}
@@ -319,6 +304,9 @@ func resolveArgList(fields *ast.InputValueList, typeMap, peers map[string]*list.
 			t = unwrapType(v.List)
 		default:
 			return
+		}
+		if isBuiltin(t.Name) {
+			continue
 		}
 
 		if _, exists := typeMap[t.Name]; exists {
@@ -339,7 +327,11 @@ func isCircular(a, b *node) bool {
 	return false
 }
 
-func removeBuiltins(typeMap map[string]*list.List) {
+func isBuiltin(name string) bool {
+	return name == "ID" || name == "Boolean" || name == "String" || name == "Int" || name == "Float"
+}
+
+func removeBuiltins(typeMap map[string][]*ast.TypeDecl) {
 	delete(typeMap, "ID")
 	delete(typeMap, "Boolean")
 	delete(typeMap, "Int")
