@@ -30,7 +30,7 @@ type TypeChecker interface {
 	Check(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) []error
 }
 
-// TypeCheckFn represents a single function behaving as a TypeChecker.
+// TypeCheckerFn represents a single function behaving as a TypeChecker.
 type TypeCheckerFn func([]*ast.DirectiveLit, map[string][]*ast.TypeDecl) []error
 
 // Check calls the TypeCheckerFn given the GraphQL Document.
@@ -890,7 +890,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 	case *ast.TypeSpec_Schema:
 		_, ok := ogts.Type.(*ast.TypeSpec_Schema)
 		if !ok {
-			*errs = append(*errs, fmt.Errorf("extend:schema: original type defintion must be a schema"))
+			*errs = append(*errs, fmt.Errorf("extend:schema: original type definition must be a schema"))
 			return
 		}
 
@@ -898,7 +898,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 	case *ast.TypeSpec_Scalar:
 		_, ok := ogts.Type.(*ast.TypeSpec_Scalar)
 		if !ok {
-			*errs = append(*errs, fmt.Errorf("extend:scalar:%s: original type defintion must be a scalar", name))
+			*errs = append(*errs, fmt.Errorf("extend:scalar:%s: original type definition must be a scalar", name))
 			return
 		}
 
@@ -906,7 +906,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 	case *ast.TypeSpec_Object:
 		ogObj, ok := ogts.Type.(*ast.TypeSpec_Object)
 		if !ok {
-			*errs = append(*errs, fmt.Errorf("extend:object:%s: original type defintion must be a object", name))
+			*errs = append(*errs, fmt.Errorf("extend:object:%s: original type definition must be a object", name))
 			return
 		}
 
@@ -936,7 +936,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 
 			for efName, ef := range efMap {
 				if _, ok := fMap[efName]; ok {
-					*errs = append(*errs, fmt.Errorf("%s:%s: field defintion already exists in original object definition", name, efName))
+					*errs = append(*errs, fmt.Errorf("%s:%s: field definition already exists in original object definition", name, efName))
 					continue
 				}
 
@@ -982,7 +982,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 	case *ast.TypeSpec_Interface:
 		ogInter, ok := ogts.Type.(*ast.TypeSpec_Interface)
 		if !ok {
-			*errs = append(*errs, fmt.Errorf("extend:interface:%s: original type defintion must be a interface", name))
+			*errs = append(*errs, fmt.Errorf("extend:interface:%s: original type definition must be a interface", name))
 			return
 		}
 
@@ -1007,7 +1007,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 	case *ast.TypeSpec_Union:
 		ogUnion, ok := ogts.Type.(*ast.TypeSpec_Union)
 		if !ok {
-			*errs = append(*errs, fmt.Errorf("extend:union:%s: original type defintion must be a union", name))
+			*errs = append(*errs, fmt.Errorf("extend:union:%s: original type definition must be a union", name))
 			return
 		}
 
@@ -1029,7 +1029,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 	case *ast.TypeSpec_Enum:
 		ogEnum, ok := ogts.Type.(*ast.TypeSpec_Enum)
 		if !ok {
-			*errs = append(*errs, fmt.Errorf("extend:enum:%s: original type defintion must be a enum", name))
+			*errs = append(*errs, fmt.Errorf("extend:enum:%s: original type definition must be a enum", name))
 			return
 		}
 
@@ -1051,7 +1051,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 	case *ast.TypeSpec_Input:
 		ogInput, ok := ogts.Type.(*ast.TypeSpec_Input)
 		if !ok {
-			*errs = append(*errs, fmt.Errorf("extend:input:%s: original type defintion must be a input", name))
+			*errs = append(*errs, fmt.Errorf("extend:input:%s: original type definition must be a input", name))
 			return
 		}
 
@@ -1068,7 +1068,7 @@ func validateExtend(ogts, exts *ast.TypeSpec, items map[string][]*ast.TypeDecl, 
 		for _, of := range ogInput.Input.Fields.List {
 			for _, ef := range t.Input.Fields.List {
 				if of.Name.Name == ef.Name.Name {
-					*errs = append(*errs, fmt.Errorf("%s:%s: field defintion already exists in original input definition", name, of.Name.Name))
+					*errs = append(*errs, fmt.Errorf("%s:%s: field definition already exists in original input definition", name, of.Name.Name))
 				}
 			}
 		}

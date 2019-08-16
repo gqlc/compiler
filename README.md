@@ -7,3 +7,22 @@
 
 Package `compiler` provides types and interfaces for interacting with or implementing
 a compiler for the GraphQL IDL.
+
+## Features
+
+- Import Tree Reduction
+- Type Validation
+- Type Merging
+
+### Import Tree Reduction
+GraphQL documents can import one another with the following directive:
+```graphql
+directive @import(paths: [String]!) on DOCUMENT
+```
+
+### Type Validation
+Type Validation/Checking is provided by implementing the `TypeChecker` interface. The
+`Validate` function is a `TypeChecker` that enforces type validation, per the GraphQL spec.
+
+### Type Merging
+Type merging handles merging type extensions with their original type definition.

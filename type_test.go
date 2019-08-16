@@ -759,7 +759,7 @@ interface Test {
 
 extend scalar Test`,
 			Errs: []string{
-				fmt.Sprintf("extend:scalar:%s: original type defintion must be a scalar", "Test"),
+				fmt.Sprintf("extend:scalar:%s: original type definition must be a scalar", "Test"),
 			},
 		},
 		{
@@ -781,8 +781,8 @@ extend type Test implements A & B & String {
 	b: String
 }`,
 			Errs: []string{
-				fmt.Sprintf("extend:object:%s: original type defintion must be a object", "String"),
-				fmt.Sprintf("%s:%s: field defintion already exists in original object definition", "extend:object:Test", "b"),
+				fmt.Sprintf("extend:object:%s: original type definition must be a object", "String"),
+				fmt.Sprintf("%s:%s: field definition already exists in original object definition", "extend:object:Test", "b"),
 				fmt.Sprintf("%s: undefined interface: %s", "extend:object:Test", "B"),
 				fmt.Sprintf("%s:%s: non-interface type can not be used as interface", "extend:object:Test", "String"),
 			},
@@ -801,7 +801,7 @@ extend interface Test {
 	a: String
 }`,
 			Errs: []string{
-				fmt.Sprintf("extend:interface:%s: original type defintion must be a interface", "String"),
+				fmt.Sprintf("extend:interface:%s: original type definition must be a interface", "String"),
 				fmt.Sprintf("%s:%s: field already exists in original interface definition", "extend:interface:Test", "a"),
 			},
 		},
@@ -823,7 +823,7 @@ extend union String
 
 extend union Test = A`,
 			Errs: []string{
-				fmt.Sprintf("extend:union:%s: original type defintion must be a union", "String"),
+				fmt.Sprintf("extend:union:%s: original type definition must be a union", "String"),
 				fmt.Sprintf("%s:%s: union member already exists in original union definition", "extend:union:Test", "A"),
 			},
 		},
@@ -841,7 +841,7 @@ extend enum Test {
 	A
 }`,
 			Errs: []string{
-				fmt.Sprintf("extend:enum:%s: original type defintion must be a enum", "String"),
+				fmt.Sprintf("extend:enum:%s: original type definition must be a enum", "String"),
 				fmt.Sprintf("%s:%s: enum value already exists in original enum definition", "extend:enum:Test", "A"),
 			},
 		},
@@ -859,8 +859,8 @@ extend input Test {
 	a: String
 }`,
 			Errs: []string{
-				fmt.Sprintf("extend:input:%s: original type defintion must be a input", "String"),
-				fmt.Sprintf("%s:%s: field defintion already exists in original input definition", "extend:input:Test", "a"),
+				fmt.Sprintf("extend:input:%s: original type definition must be a input", "String"),
+				fmt.Sprintf("%s:%s: field definition already exists in original input definition", "extend:input:Test", "a"),
 			},
 		},
 		{

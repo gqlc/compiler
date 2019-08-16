@@ -65,3 +65,16 @@ func ToIR(types []*ast.TypeDecl) map[string][]*ast.TypeDecl {
 
 	return ir
 }
+
+// FromIR converts the compiler intermediate representation
+// back to a simple slice of GraphQL type declarations.
+//
+func FromIR(ir map[string][]*ast.TypeDecl) []*ast.TypeDecl {
+	types := make([]*ast.TypeDecl, 0, len(ir))
+
+	for _, decls := range ir {
+		types = append(types, decls...)
+	}
+
+	return types
+}
