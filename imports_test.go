@@ -511,7 +511,14 @@ func TestPeerTypes(t *testing.T) {
 		return
 	}
 
-	if len(docsIR[docs[1]]) != 4 {
+	var types map[string][]*ast.TypeDecl
+	for _, t := range docsIR {
+		if len(t) > 0 {
+			types = t
+		}
+	}
+
+	if len(types) != 4 {
 		t.Fail()
 		return
 	}
