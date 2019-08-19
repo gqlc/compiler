@@ -201,6 +201,10 @@ func walk(q *list.List, typeMap map[string][]*ast.TypeDecl, f func(*node, map[st
 
 func addTypes(n *node, typeMap map[string][]*ast.TypeDecl) {
 	for name, decls := range typeMap {
+		if len(decls) > 0 {
+			continue
+		}
+
 		d, ok := n.Types[name]
 		if !ok {
 			continue

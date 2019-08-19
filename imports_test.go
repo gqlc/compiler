@@ -434,6 +434,12 @@ func TestReduceImports(t *testing.T) {
 			TypesLen: map[string]int{"two": 2},
 			Docs:     map[string]io.Reader{"two": strings.NewReader(twoGql), "thr": strings.NewReader(thrGql)},
 		},
+		{
+			Name:     "DiamondImport",
+			DocsLen:  1,
+			TypesLen: map[string]int{"five": 4},
+			Docs:     map[string]io.Reader{"five": strings.NewReader(fiveGql), "two": strings.NewReader(twoGql), "six": strings.NewReader(sixGql), "thr": strings.NewReader(thrGql)},
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -451,19 +457,26 @@ func TestReduceImports(t *testing.T) {
 			}
 
 			if len(docsIR) != testCase.DocsLen {
-				t.Fail()
+				subT.Fail()
 				return
 			}
 
 			for doc, docTypes := range docsIR {
 				if len(docTypes) != testCase.TypesLen[doc.Name] {
-					t.Fail()
+					subT.Fail()
 					return
 				}
 
 				for _, tg := range doc.Types {
 					if tg == nil {
-						t.Fail()
+						subT.Fail()
+						return
+					}
+				}
+
+				for _, v := range docTypes {
+					if len(v) > 1 {
+						subT.Fail()
 						return
 					}
 				}
