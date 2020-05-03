@@ -934,6 +934,10 @@ extend scalar String @a @b`,
 	}
 }
 
+func TestValidator(t *testing.T) {
+	compiler.TestTypeChecker(t, Validator)
+}
+
 func toDeclMap(decls []*ast.TypeDecl) map[string][]*ast.TypeDecl {
 	m := make(map[string][]*ast.TypeDecl, len(decls))
 

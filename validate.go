@@ -7,6 +7,14 @@ import (
 	"github.com/gqlc/graphql/ast"
 )
 
+// Types contains the builtin types provided by the compiler
+// and any custom types given to RegisterTypes.
+//
+var Types []*ast.TypeDecl
+
+// RegisterTypes registers pre-defined types with the compiler.
+func RegisterTypes(decls ...*ast.TypeDecl) { Types = append(Types, decls...) }
+
 // TypeError represents a type error.
 type TypeError struct {
 	// Document where type error was discovered
@@ -115,10 +123,14 @@ func sortTypes(types map[string][]*ast.TypeDecl) {
 	}
 }
 
-// Types contains the builtin types provided by the compiler
-// and any custom types given to RegisterTypes.
-//
-var Types []*ast.TypeDecl
+type tester interface {
+	Fail()
+	Log(args ...interface{})
+}
 
-// RegisterTypes registers pre-defined types with the compiler.
-func RegisterTypes(decls ...*ast.TypeDecl) { Types = append(Types, decls...) }
+// TestTypeChecker implements a few tests for custom type checkers.
+// It is mainly focused around ensuring validation across imports.
+//
+func TestTypeChecker(t tester, v TypeChecker) {
+
+}
