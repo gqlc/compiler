@@ -13,9 +13,8 @@ import (
 var Validator = compiler.TypeCheckerFn(validate)
 
 type typeDecls struct {
-	ir     compiler.IR
-	curDoc *ast.Document
-	types  map[string][]*ast.TypeDecl
+	ir    compiler.IR
+	types map[string][]*ast.TypeDecl
 }
 
 func (decls typeDecls) lookup(name string) []*ast.TypeDecl {
@@ -24,17 +23,13 @@ func (decls typeDecls) lookup(name string) []*ast.TypeDecl {
 		return decl
 	}
 
-	doc, decl := compiler.Lookup(name, decls.ir)
-	if doc != decls.curDoc {
-		return nil
-	}
-
+	_, decl = compiler.Lookup(name, decls.ir)
 	return decl
 }
 
 func validate(ir compiler.IR) (errs []error) {
 	for doc, types := range ir {
-		typeDecl := typeDecls{types: types, ir: ir, curDoc: doc}
+		typeDecl := typeDecls{types: types, ir: ir}
 
 		for name, decls := range types {
 			decl := decls[0]

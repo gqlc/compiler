@@ -398,7 +398,6 @@ func TestValue(t *testing.T) {
 	}
 
 	ir := make(compiler.IR)
-	curDoc := new(ast.Document)
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
 			var errs []error
@@ -408,7 +407,7 @@ func TestValue(t *testing.T) {
 				testCase.C,
 				testCase.Val,
 				testCase.ValType,
-				typeDecls{types: toDeclMap(testCase.Items), ir: ir, curDoc: curDoc},
+				typeDecls{types: toDeclMap(testCase.Items), ir: ir},
 				&errs,
 			)
 
@@ -483,14 +482,13 @@ func TestDirectives(t *testing.T) {
 	}
 
 	ir := make(compiler.IR)
-	curDoc := new(ast.Document)
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
 			var errs []error
 			validateDirectives(
 				testCase.Dirs,
 				testCase.Loc,
-				typeDecls{types: toDeclMap(testCase.Items), ir: ir, curDoc: curDoc},
+				typeDecls{types: toDeclMap(testCase.Items), ir: ir},
 				&errs,
 			)
 
