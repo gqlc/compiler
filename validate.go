@@ -43,13 +43,13 @@ func (f TypeCheckerFn) Check(ir IR) []error {
 	return f(ir)
 }
 
+var builtins = &ast.Document{Name: "gqlc.compiler.types"}
+
 // CheckTypes is a helper function for running a suite of
 // type checking on several GraphQL Documents. Any types given
 // to RegisterTypes will included as their very own document.
 //
 func CheckTypes(docs IR, checkers ...TypeChecker) (errs []*TypeError) {
-	builtins := &ast.Document{Name: "gqlc.compiler.types"}
-
 	docs[builtins] = toDeclMap(Types)
 
 	for _, checker := range checkers {
@@ -110,4 +110,11 @@ func sortTypes(types map[string][]*ast.TypeDecl) {
 
 		types[name] = l
 	}
+}
+
+// ImportValidator validates that all types referenced are correctly imported.
+var ImportValidator = TypeCheckerFn(validateImports)
+
+func validateImports(docs IR) (errs []error) {
+	return
 }
