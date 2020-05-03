@@ -12,9 +12,9 @@ import (
 // Validator uses the rules defined in the GraphQL spec to validates types.
 var Validator = compiler.TypeCheckerFn(validate)
 
-func validate(directives []*ast.DirectiveLit, ir compiler.IR) (errs []error) {
+func validate(ir compiler.IR) (errs []error) {
 	// Validate each type decl and any extensions it has
-	for _, types := range ir {
+	for doc, types := range ir {
 		for name, decls := range types {
 			decl := decls[0]
 
@@ -49,7 +49,7 @@ func validate(directives []*ast.DirectiveLit, ir compiler.IR) (errs []error) {
 		}
 
 		// Validate top-lvl directives
-		validateDirectives(directives, ast.DirectiveLocation_DOCUMENT, types, &errs)
+		validateDirectives(doc.Directives, ast.DirectiveLocation_DOCUMENT, types, &errs)
 	}
 
 	return
