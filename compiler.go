@@ -5,43 +5,55 @@ import (
 	"github.com/gqlc/graphql/ast"
 )
 
+// IR is a representation used by the compiler APIs.
+type IR map[*ast.Document]map[string][]*ast.TypeDecl
+
 // ToIR converts a GraphQL Document to a intermediate
 // representation for the compiler internals.
 //
-func ToIR(types []*ast.TypeDecl) map[string][]*ast.TypeDecl {
-	ir := make(map[string][]*ast.TypeDecl, len(types))
+func ToIR(docs []*ast.Document) IR {
+	ir := make(map[*ast.Document]map[string][]*ast.TypeDecl, len(docs))
 
 	var ts *ast.TypeSpec
-	for _, decl := range types {
-		switch v := decl.Spec.(type) {
-		case *ast.TypeDecl_TypeSpec:
-			ts = v.TypeSpec
-		case *ast.TypeDecl_TypeExtSpec:
-			ts = v.TypeExtSpec.Type
-		}
+	for _, doc := range docs {
+		types := make(map[string][]*ast.TypeDecl, len(doc.Types))
+		ir[doc] = types
 
-		name := "schema"
-		if ts.Name != nil {
-			name = ts.Name.Name
-		}
+		for _, decl := range doc.Types {
+			switch v := decl.Spec.(type) {
+			case *ast.TypeDecl_TypeSpec:
+				ts = v.TypeSpec
+			case *ast.TypeDecl_TypeExtSpec:
+				ts = v.TypeExtSpec.Type
+			}
 
-		l := ir[name]
-		l = append(l, decl)
-		ir[name] = l
+			name := "schema"
+			if ts.Name != nil {
+				name = ts.Name.Name
+			}
+
+			l := types[name]
+			l = append(l, decl)
+			types[name] = l
+		}
 	}
 
-	return ir
+	return IR(ir)
 }
 
 // FromIR converts the compiler intermediate representation
 // back to a simple slice of GraphQL type declarations.
 //
-func FromIR(ir map[string][]*ast.TypeDecl) []*ast.TypeDecl {
-	types := make([]*ast.TypeDecl, 0, len(ir))
+func FromIR(ir IR) []*ast.Document {
+	docs := make([]*ast.Document, len(ir))
 
-	for _, decls := range ir {
-		types = append(types, decls...)
+	for doc, mdecls := range ir {
+		doc.Types = doc.Types[:]
+
+		for _, decls := range mdecls {
+			doc.Types = append(doc.Types, decls...)
+		}
 	}
 
-	return types
+	return docs
 }

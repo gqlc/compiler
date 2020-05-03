@@ -406,7 +406,7 @@ func TestValue(t *testing.T) {
 				testCase.C,
 				testCase.Val,
 				testCase.ValType,
-				compiler.ToIR(testCase.Items),
+				toDeclMap(testCase.Items),
 				&errs,
 			)
 
@@ -486,7 +486,7 @@ func TestDirectives(t *testing.T) {
 			validateDirectives(
 				testCase.Dirs,
 				testCase.Loc,
-				compiler.ToIR(testCase.Items),
+				toDeclMap(testCase.Items),
 				&errs,
 			)
 
@@ -508,7 +508,7 @@ func TestDirectives(t *testing.T) {
 }
 
 func TestCompareTypes(t *testing.T) {
-	items := compiler.ToIR([]*ast.TypeDecl{
+	items := toDeclMap([]*ast.TypeDecl{
 		{
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestInterface"}, Type: &ast.TypeSpec_Interface{}}},
 		},
@@ -901,7 +901,7 @@ extend scalar String @a @b`,
 				return
 			}
 
-			errs := Validator.Check(doc.Directives, compiler.ToIR(doc.Types))
+			errs := Validator.Check(doc.Directives, compiler.ToIR([]*ast.Document{doc}))
 
 			var count int
 			for _, terr := range errs {
@@ -928,4 +928,29 @@ extend scalar String @a @b`,
 			}
 		})
 	}
+}
+
+func toDeclMap(decls []*ast.TypeDecl) map[string][]*ast.TypeDecl {
+	m := make(map[string][]*ast.TypeDecl, len(decls))
+
+	var ts *ast.TypeSpec
+	for _, decl := range decls {
+		switch v := decl.Spec.(type) {
+		case *ast.TypeDecl_TypeSpec:
+			ts = v.TypeSpec
+		case *ast.TypeDecl_TypeExtSpec:
+			ts = v.TypeExtSpec.Type
+		}
+
+		name := "schema"
+		if ts.Name != nil {
+			name = ts.Name.Name
+		}
+
+		l := m[name]
+		l = append(l, decl)
+		m[name] = l
+	}
+
+	return m
 }

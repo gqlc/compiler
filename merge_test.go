@@ -146,7 +146,7 @@ extend input Test {
 				return
 			}
 
-			docIR := MergeExtensions(ToIR(doc.Types))
+			docIR := MergeExtensions(toDeclMap(doc.Types))
 
 			for _, decls := range docIR {
 				if len(decls) > 1 {

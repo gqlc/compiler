@@ -26,15 +26,15 @@ type TypeChecker interface {
 	// Check analyzes the types in a GraphQL Document and returns any
 	// problems it has detected.
 	//
-	Check(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) []error
+	Check(directives []*ast.DirectiveLit, ir IR) []error
 }
 
 // TypeCheckerFn represents a single function behaving as a TypeChecker.
-type TypeCheckerFn func([]*ast.DirectiveLit, map[string][]*ast.TypeDecl) []error
+type TypeCheckerFn func([]*ast.DirectiveLit, IR) []error
 
 // Check calls the TypeCheckerFn given the GraphQL Document.
-func (f TypeCheckerFn) Check(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) []error {
-	return f(directives, types)
+func (f TypeCheckerFn) Check(directives []*ast.DirectiveLit, ir IR) []error {
+	return f(directives, ir)
 }
 
 // CheckTypes is a helper function for running a suite of
@@ -43,16 +43,19 @@ func (f TypeCheckerFn) Check(directives []*ast.DirectiveLit, types map[string][]
 //
 // All errors encountered will be appended into the return slice: errs
 //
-func CheckTypes(docs map[*ast.Document]map[string][]*ast.TypeDecl, checkers ...TypeChecker) (errs []*TypeError) {
-	builtins := ToIR(Types)
+func CheckTypes(docs IR, checkers ...TypeChecker) (errs []*TypeError) {
+	builtins := toDeclMap(Types)
 
+	m := make(map[*ast.Document]map[string][]*ast.TypeDecl, 1)
 	for d, doc := range docs {
 		types := merge(builtins, doc) // this order ensures user types can override builtin types
 
 		sortTypes(types)
 
+		m[d] = types
+
 		for _, checker := range checkers {
-			cerrs := checker.Check(d.Directives, types)
+			cerrs := checker.Check(d.Directives, m)
 			for _, err := range cerrs {
 				errs = append(errs, &TypeError{
 					Doc: d,
@@ -60,8 +63,35 @@ func CheckTypes(docs map[*ast.Document]map[string][]*ast.TypeDecl, checkers ...T
 				})
 			}
 		}
+
+		delete(m, d)
 	}
 	return
+}
+
+func toDeclMap(decls []*ast.TypeDecl) map[string][]*ast.TypeDecl {
+	m := make(map[string][]*ast.TypeDecl, len(decls))
+
+	var ts *ast.TypeSpec
+	for _, decl := range decls {
+		switch v := decl.Spec.(type) {
+		case *ast.TypeDecl_TypeSpec:
+			ts = v.TypeSpec
+		case *ast.TypeDecl_TypeExtSpec:
+			ts = v.TypeExtSpec.Type
+		}
+
+		name := "schema"
+		if ts.Name != nil {
+			name = ts.Name.Name
+		}
+
+		l := m[name]
+		l = append(l, decl)
+		m[name] = l
+	}
+
+	return m
 }
 
 func merge(a, b map[string][]*ast.TypeDecl) map[string][]*ast.TypeDecl {

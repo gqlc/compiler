@@ -12,43 +12,46 @@ import (
 // Validator uses the rules defined in the GraphQL spec to validates types.
 var Validator = compiler.TypeCheckerFn(validate)
 
-func validate(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) (errs []error) {
+func validate(directives []*ast.DirectiveLit, ir compiler.IR) (errs []error) {
 	// Validate each type decl and any extensions it has
-	for name, decls := range types {
-		decl := decls[0]
+	for _, types := range ir {
+		for name, decls := range types {
+			decl := decls[0]
 
-		// Make sure the front is a TypeSpec and not an TypeExt
-		ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
-		if !ok {
-			errs = append(errs, fmt.Errorf("missing type declaration for: %s", name))
-			continue
-		}
-
-		typ, loc := validateType(ts.TypeSpec, types, &errs)
-
-		// Check type name
-		if loc != ast.DirectiveLocation_SCHEMA {
-			checkName(typ, ts.TypeSpec.Name, &errs)
-		}
-
-		// Validate applied directives
-		if loc != ast.DirectiveLocation_NoPos {
-			validateDirectives(ts.TypeSpec.Directives, loc, types, &errs)
-		}
-
-		for _, decl = range decls[1:] {
-			exts, ok := decl.Spec.(*ast.TypeDecl_TypeExtSpec)
+			// Make sure the front is a TypeSpec and not an TypeExt
+			ts, ok := decl.Spec.(*ast.TypeDecl_TypeSpec)
 			if !ok {
-				errs = append(errs, fmt.Errorf("cannot have more than one type definition for: %s", name))
+				errs = append(errs, fmt.Errorf("missing type declaration for: %s", name))
 				continue
 			}
 
-			validateExtend(ts.TypeSpec, exts.TypeExtSpec.Type, types, &errs)
+			typ, loc := validateType(ts.TypeSpec, types, &errs)
+
+			// Check type name
+			if loc != ast.DirectiveLocation_SCHEMA {
+				checkName(typ, ts.TypeSpec.Name, &errs)
+			}
+
+			// Validate applied directives
+			if loc != ast.DirectiveLocation_NoPos {
+				validateDirectives(ts.TypeSpec.Directives, loc, types, &errs)
+			}
+
+			for _, decl = range decls[1:] {
+				exts, ok := decl.Spec.(*ast.TypeDecl_TypeExtSpec)
+				if !ok {
+					errs = append(errs, fmt.Errorf("cannot have more than one type definition for: %s", name))
+					continue
+				}
+
+				validateExtend(ts.TypeSpec, exts.TypeExtSpec.Type, types, &errs)
+			}
 		}
+
+		// Validate top-lvl directives
+		validateDirectives(directives, ast.DirectiveLocation_DOCUMENT, types, &errs)
 	}
 
-	// Validate top-lvl directives
-	validateDirectives(directives, ast.DirectiveLocation_DOCUMENT, types, &errs)
 	return
 }
 
