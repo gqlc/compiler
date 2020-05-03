@@ -901,7 +901,7 @@ extend scalar String @a @b`,
 				return
 			}
 
-			errs := Validate(doc.Directives, compiler.ToIR(doc.Types))
+			errs := Validator.Check(doc.Directives, compiler.ToIR(doc.Types))
 
 			var count int
 			for _, terr := range errs {

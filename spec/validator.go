@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gqlc/compiler"
 	"github.com/gqlc/graphql/ast"
 	"github.com/gqlc/graphql/token"
 )
 
-// Validate applies the GraphQL type system validation rules, per the GraphQL spec.
-func Validate(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) (errs []error) {
+// Validator uses the rules defined in the GraphQL spec to validates types.
+var Validator = compiler.TypeCheckerFn(validate)
+
+func validate(directives []*ast.DirectiveLit, types map[string][]*ast.TypeDecl) (errs []error) {
 	// Validate each type decl and any extensions it has
 	for name, decls := range types {
 		decl := decls[0]
