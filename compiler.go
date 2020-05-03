@@ -1,3 +1,4 @@
+// Package compiler provides utilities for working with GraphQL documents.
 package compiler
 
 import (
