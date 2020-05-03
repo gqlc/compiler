@@ -397,6 +397,8 @@ func TestValue(t *testing.T) {
 		},
 	}
 
+	ir := make(compiler.IR)
+	curDoc := new(ast.Document)
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
 			var errs []error
@@ -406,7 +408,7 @@ func TestValue(t *testing.T) {
 				testCase.C,
 				testCase.Val,
 				testCase.ValType,
-				toDeclMap(testCase.Items),
+				typeDecls{types: toDeclMap(testCase.Items), ir: ir, curDoc: curDoc},
 				&errs,
 			)
 
@@ -480,13 +482,15 @@ func TestDirectives(t *testing.T) {
 		},
 	}
 
+	ir := make(compiler.IR)
+	curDoc := new(ast.Document)
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
 			var errs []error
 			validateDirectives(
 				testCase.Dirs,
 				testCase.Loc,
-				toDeclMap(testCase.Items),
+				typeDecls{types: toDeclMap(testCase.Items), ir: ir, curDoc: curDoc},
 				&errs,
 			)
 
@@ -582,7 +586,7 @@ func TestCompareTypes(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
-			ok := compareTypes(testCase.A, testCase.B, items)
+			ok := compareTypes(testCase.A, testCase.B, typeDecls{types: items})
 			if ok != testCase.Expected {
 				subT.Fail()
 			}
