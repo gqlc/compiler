@@ -8,6 +8,17 @@ import (
 // IR is a representation used by the compiler APIs.
 type IR map[*ast.Document]map[string][]*ast.TypeDecl
 
+// Lookup returns the Type and the Document it belongs to, or nil.
+func Lookup(name string, ir IR) (*ast.Document, []*ast.TypeDecl) {
+	for doc, decls := range ir {
+		if decl, ok := decls[name]; ok {
+			return doc, decl
+		}
+	}
+
+	return nil, nil
+}
+
 // ToIR converts a GraphQL Document to a intermediate
 // representation for the compiler internals.
 //
