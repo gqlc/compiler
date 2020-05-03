@@ -2,9 +2,13 @@ package compiler
 
 import (
 	"fmt"
+	"io"
 	"sort"
+	"strings"
 
 	"github.com/gqlc/graphql/ast"
+	"github.com/gqlc/graphql/parser"
+	"github.com/gqlc/graphql/token"
 )
 
 // Types contains the builtin types provided by the compiler
@@ -44,34 +48,23 @@ func (f TypeCheckerFn) Check(ir IR) []error {
 }
 
 // CheckTypes is a helper function for running a suite of
-// type checking on several GraphQL Documents. Any TypeDecls
-// passed to RegisterTypes will be appended to each Documents' Type list.
-//
-// All errors encountered will be appended into the return slice: errs
+// type checking on several GraphQL Documents. Any types given
+// to RegisterTypes will included as their very own document.
 //
 func CheckTypes(docs IR, checkers ...TypeChecker) (errs []*TypeError) {
-	builtins := toDeclMap(Types)
+	builtins := &ast.Document{Name: "gqlc.compiler.types"}
 
-	m := make(map[*ast.Document]map[string][]*ast.TypeDecl, 1)
-	for d, doc := range docs {
-		types := merge(builtins, doc) // this order ensures user types can override builtin types
+	docs[builtins] = toDeclMap(Types)
 
-		sortTypes(types)
-
-		m[d] = types
-
-		for _, checker := range checkers {
-			cerrs := checker.Check(m)
-			for _, err := range cerrs {
-				errs = append(errs, &TypeError{
-					Doc: d,
-					Msg: err.Error(),
-				})
-			}
+	for _, checker := range checkers {
+		cerrs := checker.Check(docs)
+		for _, err := range cerrs {
+			errs = append(errs, &TypeError{
+				Msg: err.Error(),
+			})
 		}
-
-		delete(m, d)
 	}
+
 	return
 }
 
@@ -125,12 +118,61 @@ func sortTypes(types map[string][]*ast.TypeDecl) {
 
 type tester interface {
 	Fail()
-	Log(args ...interface{})
+	Logf(format string, args ...interface{})
 }
 
 // TestTypeChecker implements a few tests for custom type checkers.
 // It is mainly focused around ensuring validation across imports.
 //
 func TestTypeChecker(t tester, v TypeChecker) {
+	// Register builtin type
+	RegisterTypes(&ast.TypeDecl{
+		Tok: token.Token_SCALAR,
+		Spec: &ast.TypeDecl_TypeSpec{
+			TypeSpec: &ast.TypeSpec{
+				Name: &ast.Ident{Name: "Msg"},
+				Type: &ast.TypeSpec_Scalar{
+					Scalar: &ast.ScalarType{Name: &ast.Ident{Name: "Msg"}},
+				},
+			},
+		},
+	})
 
+	// Create a doc set
+	docs, err := parser.ParseDocs(
+		token.NewDocSet(),
+		map[string]io.Reader{
+			"a": strings.NewReader(`
+schema {
+  query: Query
+}`),
+			"b": strings.NewReader(`
+type Query {
+  echo(msg: Msg!): Msg!
+}`),
+		},
+		0,
+	)
+	if err != nil {
+		t.Logf("unexpected error when parsing test docs: %s", err)
+		t.Fail()
+		return
+	}
+
+	ir := ToIR(docs)
+	if len(ir) != len(docs) {
+		t.Logf("compiler: internal error with ToIR")
+		t.Fail()
+		return
+	}
+
+	errs := CheckTypes(ir, v)
+	if len(errs) == 0 {
+		return
+	}
+
+	for _, err := range errs {
+		t.Logf("encountered error while type checking: %s", err)
+	}
+	t.Fail()
 }
