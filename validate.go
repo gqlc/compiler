@@ -178,6 +178,7 @@ func getImports(docs IR) map[*ast.Document]map[*ast.Document]struct{} {
 			}
 
 			dimports := make(map[*ast.Document]struct{}, len(paths))
+			dimports[builtins] = struct{}{}
 
 			for _, path := range paths {
 				p := strings.Trim(path.Value, "\"")
@@ -187,7 +188,7 @@ func getImports(docs IR) map[*ast.Document]map[*ast.Document]struct{} {
 			imports[doc] = dimports
 		}
 
-		paths = paths[:]
+		paths = paths[:0]
 	}
 
 	return imports
@@ -224,8 +225,21 @@ func getUnknownTypes(decls []*ast.TypeDecl, peers map[string][]*ast.TypeDecl) (u
 }
 
 func fromArgs(args *ast.InputValueList, peers map[string][]*ast.TypeDecl, unknowns *[]string) {
+	if args == nil {
+		return
+	}
+
 	for _, arg := range args.List {
-		id := unwrapType(arg.Type)
+		var id *ast.Ident
+		switch x := arg.Type.(type) {
+		case *ast.InputValue_Ident:
+			id = x.Ident
+		case *ast.InputValue_List:
+			id = unwrapType(x.List)
+		case *ast.InputValue_NonNull:
+			id = unwrapType(x.NonNull)
+		}
+
 		_, ok := peers[id.Name]
 		if ok {
 			continue
@@ -236,10 +250,23 @@ func fromArgs(args *ast.InputValueList, peers map[string][]*ast.TypeDecl, unknow
 }
 
 func fromFields(fields *ast.FieldList, peers map[string][]*ast.TypeDecl, unknowns *[]string) {
+	if fields == nil {
+		return
+	}
+
 	for _, field := range fields.List {
 		fromArgs(field.Args, peers, unknowns)
 
-		id := unwrapType(field.Type)
+		var id *ast.Ident
+		switch x := field.Type.(type) {
+		case *ast.Field_Ident:
+			id = x.Ident
+		case *ast.Field_List:
+			id = unwrapType(x.List)
+		case *ast.Field_NonNull:
+			id = unwrapType(x.NonNull)
+		}
+
 		_, ok := peers[id.Name]
 		if ok {
 			continue
