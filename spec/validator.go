@@ -142,7 +142,7 @@ func validateSchema(schema *ast.SchemaType, items typeDecls, errs *[]error) {
 			*errs = append(*errs, fmt.Errorf("schema:%s: root operation return type can not be a non null type", f.Name.Name))
 			continue
 		default:
-			panic(fmt.Sprintf("compiler: schema:%s: must have type", f.Name.Name))
+			panic(fmt.Sprintf("spec: schema:%s: must have type", f.Name.Name))
 		}
 
 		decls := items.lookup(id.Name)
@@ -282,7 +282,7 @@ func validateArgDefs(name string, args []*ast.InputValue, items typeDecls, errs 
 			valType = v.NonNull
 			id = unwrapType(v.NonNull)
 		default:
-			panic(fmt.Sprintf("compiler: %s:%s: argument must have a type", name, aname))
+			panic(fmt.Sprintf("spec: %s:%s: argument must have a type", name, aname))
 		}
 
 		if !isInputType(id, items) {
@@ -885,7 +885,7 @@ func validateDirective(name string, directive *ast.DirectiveType, items typeDecl
 			valType = v.NonNull
 			id = unwrapType(v.NonNull)
 		default:
-			panic(fmt.Sprintf("compiler: %s:%s: directive argument must have a type", name, f.Name.Name))
+			panic(fmt.Sprintf("spec: %s:%s: directive argument must have a type", name, f.Name.Name))
 		}
 
 		if !isInputType(id, items) {
@@ -1006,7 +1006,7 @@ func validateValue(host, cName string, c interface{}, val, valType interface{}, 
 
 			cLit = v
 		default:
-			panic("compiler: validateValue can only be provided an ast.BasicLit or ast.CompositeLit val")
+			panic("spec: validateValue can only be provided an ast.BasicLit or ast.CompositeLit val")
 		}
 
 		if cLit != nil {
