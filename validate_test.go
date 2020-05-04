@@ -19,6 +19,20 @@ func TestImportValidator(t *testing.T) {
 			Name: "NoImports",
 			Docs: map[string]io.Reader{"a": strings.NewReader("scalar Msg")},
 		},
+		{
+			Name: "NotTransitive",
+			Docs: map[string]io.Reader{
+				"a": strings.NewReader(`@import(paths: ["b"])
+type Msg {
+	text: String!
+	time: Time!
+}
+`),
+				"b": strings.NewReader(`@import(paths: ["c"])`),
+				"c": strings.NewReader("scalar Time"),
+			},
+			Err: "",
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -32,13 +46,11 @@ func TestImportValidator(t *testing.T) {
 			ir := ToIR(docs)
 
 			errs := CheckTypes(ir, ImportValidator)
-			if len(errs) == 0 {
+			if len(errs) == 0 && testCase.Err == "" {
 				return
 			}
 
-			for _, err := range errs {
-				subT.Log(err)
-			}
+			subT.Logf("expected error: %s, but got: %s", testCase.Err, errs[0])
 			subT.Fail()
 		})
 	}
