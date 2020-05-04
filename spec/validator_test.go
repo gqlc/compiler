@@ -1,12 +1,14 @@
-package compiler
+package spec
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/gqlc/compiler"
 	"github.com/gqlc/graphql/ast"
 	"github.com/gqlc/graphql/parser"
 	"github.com/gqlc/graphql/token"
-	"strings"
-	"testing"
 )
 
 func TestValue(t *testing.T) {
@@ -395,10 +397,19 @@ func TestValue(t *testing.T) {
 		},
 	}
 
+	ir := make(compiler.IR)
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
 			var errs []error
-			validateValue(testCase.Name, testCase.CName, testCase.C, testCase.Val, testCase.ValType, ToIR(testCase.Items), &errs)
+			validateValue(
+				testCase.Name,
+				testCase.CName,
+				testCase.C,
+				testCase.Val,
+				testCase.ValType,
+				typeDecls{types: toDeclMap(testCase.Items), ir: ir},
+				&errs,
+			)
 
 			var count int
 			for _, terr := range errs {
@@ -470,10 +481,16 @@ func TestDirectives(t *testing.T) {
 		},
 	}
 
+	ir := make(compiler.IR)
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
 			var errs []error
-			validateDirectives(testCase.Dirs, testCase.Loc, ToIR(testCase.Items), &errs)
+			validateDirectives(
+				testCase.Dirs,
+				testCase.Loc,
+				typeDecls{types: toDeclMap(testCase.Items), ir: ir},
+				&errs,
+			)
 
 			var count int
 			for _, terr := range errs {
@@ -493,7 +510,7 @@ func TestDirectives(t *testing.T) {
 }
 
 func TestCompareTypes(t *testing.T) {
-	items := ToIR([]*ast.TypeDecl{
+	items := toDeclMap([]*ast.TypeDecl{
 		{
 			Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{Name: &ast.Ident{Name: "TestInterface"}, Type: &ast.TypeSpec_Interface{}}},
 		},
@@ -567,7 +584,7 @@ func TestCompareTypes(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(subT *testing.T) {
-			ok := compareTypes(testCase.A, testCase.B, items)
+			ok := compareTypes(testCase.A, testCase.B, typeDecls{types: items})
 			if ok != testCase.Expected {
 				subT.Fail()
 			}
@@ -886,7 +903,7 @@ extend scalar String @a @b`,
 				return
 			}
 
-			errs := Validate(doc.Directives, ToIR(doc.Types))
+			errs := Validator.Check(compiler.ToIR([]*ast.Document{doc}))
 
 			var count int
 			for _, terr := range errs {
@@ -913,4 +930,33 @@ extend scalar String @a @b`,
 			}
 		})
 	}
+}
+
+func TestValidator(t *testing.T) {
+	compiler.TestTypeChecker(t, Validator)
+}
+
+func toDeclMap(decls []*ast.TypeDecl) map[string][]*ast.TypeDecl {
+	m := make(map[string][]*ast.TypeDecl, len(decls))
+
+	var ts *ast.TypeSpec
+	for _, decl := range decls {
+		switch v := decl.Spec.(type) {
+		case *ast.TypeDecl_TypeSpec:
+			ts = v.TypeSpec
+		case *ast.TypeDecl_TypeExtSpec:
+			ts = v.TypeExtSpec.Type
+		}
+
+		name := "schema"
+		if ts.Name != nil {
+			name = ts.Name.Name
+		}
+
+		l := m[name]
+		l = append(l, decl)
+		m[name] = l
+	}
+
+	return m
 }

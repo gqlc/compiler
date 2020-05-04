@@ -38,7 +38,7 @@ func ReduceImports(docs []*ast.Document) (map[*ast.Document]map[string][]*ast.Ty
 	dMap := make(map[string]*node, len(docs))
 	nodes := make([]*node, len(docs))
 	for i, doc := range docs {
-		n := &node{Types: ToIR(doc.Types), Document: doc}
+		n := &node{Types: toDeclMap(doc.Types), Document: doc}
 		dMap[doc.Name] = n
 		nodes[i] = n
 	}

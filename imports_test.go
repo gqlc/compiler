@@ -325,7 +325,7 @@ func TestResolveImports(t *testing.T) {
 	dMap := make(map[string]*node, len(docs))
 	nodes := make([]*node, len(docs))
 	for i, doc := range docs {
-		n := &node{Document: doc, Types: ToIR(doc.Types)}
+		n := &node{Document: doc, Types: toDeclMap(doc.Types)}
 		dMap[doc.Name] = n
 		nodes[i] = n
 	}
