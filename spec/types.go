@@ -2,6 +2,7 @@
 package spec
 
 import (
+	"github.com/gqlc/compiler"
 	"github.com/gqlc/graphql/ast"
 	"github.com/gqlc/graphql/token"
 )
@@ -170,4 +171,8 @@ var BuiltinTypes = []*ast.TypeDecl{
 			},
 		},
 	},
+}
+
+func init() {
+	compiler.RegisterTypes(BuiltinTypes...)
 }
