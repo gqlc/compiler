@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gqlc/graphql/ast"
+	"github.com/gqlc/graphql/token"
 )
 
 // Types contains the builtin types provided by the compiler
@@ -61,6 +62,7 @@ func CheckTypes(docs IR, checkers ...TypeChecker) (errs []error) {
 
 		errs = append(errs, cerrs...)
 	}
+	delete(docs, builtins)
 
 	return
 }
@@ -113,6 +115,34 @@ func sortTypes(types map[string][]*ast.TypeDecl) {
 	}
 }
 
+func init() {
+	RegisterTypes(&ast.TypeDecl{
+		Tok: token.Token_DIRECTIVE,
+		Spec: &ast.TypeDecl_TypeSpec{TypeSpec: &ast.TypeSpec{
+			Name: &ast.Ident{Name: "import"},
+			Type: &ast.TypeSpec_Directive{Directive: &ast.DirectiveType{
+				Locs: []*ast.DirectiveLocation{{Loc: ast.DirectiveLocation_DOCUMENT}},
+				Args: &ast.InputValueList{
+					List: []*ast.InputValue{
+						{
+							Name: &ast.Ident{Name: "paths"},
+							Type: &ast.InputValue_NonNull{
+								NonNull: &ast.NonNull{Type: &ast.NonNull_List{
+									List: &ast.List{Type: &ast.List_NonNull{
+										NonNull: &ast.NonNull{Type: &ast.NonNull_Ident{
+											Ident: &ast.Ident{Name: "String"},
+										}},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			}},
+		}},
+	})
+}
+
 // ImportValidator validates that all types are correctly imported.
 var ImportValidator = TypeCheckerFn(validateImports)
 
@@ -120,6 +150,10 @@ func validateImports(docs IR) (errs []error) {
 	imports := getImports(docs)
 
 	for doc, mdecls := range docs {
+		if doc == builtins {
+			continue
+		}
+
 		dimports := imports[doc]
 
 		for _, decls := range mdecls {
@@ -135,7 +169,7 @@ func validateImports(docs IR) (errs []error) {
 					continue
 				}
 
-				if _, ok := dimports[d]; !ok {
+				if _, ok := dimports[d]; !ok && d != builtins {
 					errs = append(errs, &TypeError{
 						Doc: doc,
 						Msg: fmt.Sprintf("unimported type: %s", rtype),
