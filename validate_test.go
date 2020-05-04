@@ -23,6 +23,8 @@ func TestImportValidator(t *testing.T) {
 			Name: "NotTransitive",
 			Docs: map[string]io.Reader{
 				"a": strings.NewReader(`@import(paths: ["b"])
+scalar String
+
 type Msg {
 	text: String!
 	time: Time!
@@ -31,7 +33,7 @@ type Msg {
 				"b": strings.NewReader(`@import(paths: ["c"])`),
 				"c": strings.NewReader("scalar Time"),
 			},
-			Err: "",
+			Err: "compiler: encountered type error in a:unimported type: Time",
 		},
 	}
 
@@ -47,6 +49,10 @@ type Msg {
 
 			errs := CheckTypes(ir, ImportValidator)
 			if len(errs) == 0 && testCase.Err == "" {
+				return
+			}
+
+			if errs[0].Error() == testCase.Err {
 				return
 			}
 
