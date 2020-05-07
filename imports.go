@@ -33,14 +33,14 @@ type node struct {
 // To import a Document the @import directive is used:
 // directive @import(paths: [String]) on DOCUMENT
 //
-func ReduceImports(docs []*ast.Document) (map[*ast.Document]map[string][]*ast.TypeDecl, error) {
+func ReduceImports(docs IR) (IR, error) {
 	// Map docs to nodes
 	dMap := make(map[string]*node, len(docs))
-	nodes := make([]*node, len(docs))
-	for i, doc := range docs {
-		n := &node{Types: toDeclMap(doc.Types), Document: doc}
+	nodes := make([]*node, 0, len(docs))
+	for doc, typeMap := range docs {
+		n := &node{Types: typeMap, Document: doc}
 		dMap[doc.Name] = n
-		nodes[i] = n
+		nodes = append(nodes, n)
 	}
 
 	// Construct import trees from set of documents (technically it could be an import tree forest)

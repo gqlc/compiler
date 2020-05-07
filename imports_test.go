@@ -450,7 +450,7 @@ func TestReduceImports(t *testing.T) {
 				return
 			}
 
-			docsIR, err := ReduceImports(docs)
+			docsIR, err := ReduceImports(ToIR(docs))
 			if err != nil {
 				subT.Error(err)
 				return
@@ -513,7 +513,7 @@ func TestPeerTypes(t *testing.T) {
 		return
 	}
 
-	docsIR, err := ReduceImports(docs)
+	docsIR, err := ReduceImports(ToIR(docs))
 	if err != nil {
 		t.Error(err)
 		return
