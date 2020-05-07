@@ -1,11 +1,12 @@
 package compiler
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/gqlc/graphql/ast"
 	"github.com/gqlc/graphql/parser"
 	"github.com/gqlc/graphql/token"
-	"strings"
-	"testing"
 )
 
 func TestMergeExtensions(t *testing.T) {

@@ -3,8 +3,9 @@ package compiler
 import (
 	"container/list"
 	"fmt"
-	"github.com/gqlc/graphql/ast"
 	"strings"
+
+	"github.com/gqlc/graphql/ast"
 )
 
 // ImportError represents an error with the imports in a GraphQL Document

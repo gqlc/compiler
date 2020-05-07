@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+
 	"github.com/gqlc/graphql/ast"
 	"github.com/gqlc/graphql/token"
 )

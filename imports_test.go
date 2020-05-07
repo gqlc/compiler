@@ -1,12 +1,13 @@
 package compiler
 
 import (
-	"github.com/gqlc/graphql/ast"
-	"github.com/gqlc/graphql/parser"
-	"github.com/gqlc/graphql/token"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/gqlc/graphql/ast"
+	"github.com/gqlc/graphql/parser"
+	"github.com/gqlc/graphql/token"
 )
 
 func TestCreateImportTries(t *testing.T) {
